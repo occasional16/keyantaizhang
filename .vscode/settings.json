@@ -1,0 +1,11 @@
+{
+    "files.autoGuessEncoding": true,
+    "[vba]": {
+        "files.encoding": "gbk"
+    },
+    "files.associations": {
+        "*.bas": "vba",
+        "*.cls": "vba",
+        "*.frm": "vba"
+    }
+}

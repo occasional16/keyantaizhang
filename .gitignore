@@ -1,0 +1,21 @@
+# Excel 二进制数据文件
+*.xlsx
+*.xlsm
+*.xls
+*.xlsb
+*.xlt*
+*.xla*
+*.xlam
+
+# 原始数据采集大文件 (只读数据)
+raw_data/*
+
+# 允许保留目录结构
+!.gitkeep
+!*/.gitkeep
+
+# Office 临时文件与锁定文件
+~$*
+*.tmp
+*.bak
+*.sav
