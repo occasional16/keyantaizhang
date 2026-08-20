@@ -30,11 +30,17 @@ Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 ├── 🎮 console_dashboard.xlsm     # [Interactive Dashboard] Control panel & status board
 ├── 🏆 papers_final_merged.xlsx   # [Output Ledger] Sheet1: Claimed papers | Sheet2: Excluded papers
 │
-├── 📂 vba_modules/               # [VBA Core Engine] (Version-controlled GBK source code)
-│   ├── Mod_Sync.bas              # Independent hot-sync base module
-│   ├── Mod0_ControlPanel.bas     # Control panel interaction and workflow orchestrator
+├── 📂 vba_modules/               # [VBA Core Engine] (Layered & Field-Oriented GBK source modules)
+│   ├── Mod_Sync.bas              # Independent hot-sync bootloader (dynamic auto-scan)
+│   ├── Mod0_ControlPanel.bas     # Control panel UI, button callbacks and workflow orchestrator
+│   ├── Mod0_MetricsEngine.bas    # 100% dynamic row-by-row scanner & status board engine
 │   ├── Mod1_TeacherPinyin.bas    # Pinyin variant and alias feature generator
-│   └── Mod2_CleanRawData.bas     # Multi-source extraction, filtering, deduplication & delivery
+│   ├── Mod2_PipelineMain.bas     # Pipeline coordinator, deduplication & delivery workbook generator
+│   ├── Mod2_IngestSources.bas    # Multi-source parsers (WOS / EI / CNKI file readers)
+│   ├── Mod3_Field_Author.bas     # Author field: alias loading, affiliation tag strip & claiming
+│   ├── Mod3_Field_JournalIF.bas  # Journal/IF field: Title Case format & high-speed JIF lookup
+│   ├── Mod3_Field_Date.bas       # Date field: publication year & date range filter
+│   └── Mod3_Field_Deduplication.bas # Deduplication field: title cleaning & normalized hash keys
 │
 └── 📂 docs/                      # [Specifications & Dev Docs]
     ├── PIPELINE_SPEC.md          # Multi-source field mapping and cleaning rules

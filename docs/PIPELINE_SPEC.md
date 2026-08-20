@@ -40,10 +40,16 @@
 ├── 🏆 papers_final_merged.xlsx     # 成果交付大表（Sheet1入库成果 + Sheet2未认领排除成果）
 │
 ├── 📂 vba_modules/                 # 【核心 VBA 源代码模块】（纯文本 .bas，GBK编码版本受控）
-│   ├── Mod_Sync.bas                # 【⭐ 独立热更底座】专职负责一键秒级无损同步所有模块并重构UI
-│   ├── Mod0_ControlPanel.bas       # 控制台交互、状态看板、业务全流程调度与交付报告引擎
-│   ├── Mod1_TeacherPinyin.bas      # 师生多格式拼音与检索特征构建子引擎
-│   └── Mod2_CleanRawData.bas       # 多源抽取、日期校验、消歧、去重、双工作表直出子引擎
+│   ├── Mod_Sync.bas                # 【⭐ 独立热更底座】动态扫描并秒级无损同步所有模块
+│   ├── Mod0_ControlPanel.bas       # 控制台交互、按钮回调、业务全流程调度与交付报告引擎
+│   ├── Mod0_MetricsEngine.bas      # 100% 真实动态逐行扫描、状态看板刷新引擎
+│   ├── Mod1_TeacherPinyin.bas      # 师生名单解析、全格式拼音与检索特征库构建引擎
+│   ├── Mod2_PipelineMain.bas       # 多源清洗总调度、记录聚合去重、双工作表 8 列直出
+│   ├── Mod2_IngestSources.bas      # 多源原始文献解析器 (WOS / EI / CNKI 官方文件高精度抽取)
+│   ├── Mod3_Field_Author.bas       # 【字段层 - 作者】别名库加载、机构角标剥离与消歧认领
+│   ├── Mod3_Field_JournalIF.bas    # 【字段层 - 期刊/IF】Title Case 规范化与 JIF 字典高速匹配
+│   ├── Mod3_Field_Date.bas         # 【字段层 - 时间】出版年与日期跨度解析、区间有效性判定
+│   └── Mod3_Field_Deduplication.bas# 【字段层 - 去重键】题目清洗、归一化字符提取与主备键生成
 │
 ├── 📂 docs/                        # 【系统详细规范与开发文档】
 │   ├── PIPELINE_SPEC.md            # 全流程业务与跨数据库字段映射规范说明书（本文件）

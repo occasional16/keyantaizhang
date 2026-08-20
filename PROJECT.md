@@ -39,11 +39,18 @@
 
 ## 架构与技术约束
 
-- **架构设计（双核解耦与分层引擎）**：
-  - **热更底座 (`vba_modules/Mod_Sync.bas`)**：专职负责秒级无损热重载所有 VBA 模块并重置控制台面板，实现“代码与数据分离”；
-  - **总控引擎 (`vba_modules/Mod0_ControlPanel.bas`)**：负责交互面板渲染、状态看板扫描、业务全流程调度与交付报告输出；
-  - **拼音引擎 (`vba_modules/Mod1_TeacherPinyin.bas`)**：读取 `config/teachers_profile.xlsx`，构建全格式拼音、缩写变体与检索特征库；
-  - **清洗去重引擎 (`vba_modules/Mod2_CleanRawData.bas`)**：实现 WOS/EI/CNKI 多源抽取、正式出版年份过滤、消歧认领、DOI + 归一化题目双重去重、复合收录标记及双工作表直出。
+- **架构设计（分层与字段解耦模块化架构）**：
+  - **热更底座 (`vba_modules/Mod_Sync.bas`)**：动态遍历 `vba_modules/*.bas` 秒级热重载所有模块，实现代码与数据分离；
+  - **表现与控制层 (`vba_modules/Mod0_ControlPanel.bas`)**：负责交互面板渲染、按钮回调、业务全流程调度与交付报告输出；
+  - **动态指标层 (`vba_modules/Mod0_MetricsEngine.bas`)**：100% 真实逐行扫描磁盘文件与交付成果表，输出精准看板数据；
+  - **拼音特征层 (`vba_modules/Mod1_TeacherPinyin.bas`)**：读取 `config/teachers_profile.xlsx`，构建全格式拼音与检索特征库；
+  - **流程总控层 (`vba_modules/Mod2_PipelineMain.bas`)**：多源清洗总调度、记录聚合去重、双工作表 8 列直出与格式化；
+  - **数据采集层 (`vba_modules/Mod2_IngestSources.bas`)**：WOS、EI、CNKI 多源异构导出数据高精度解析；
+  - **专属字段处理层 (`vba_modules/Mod3_Field_*.bas`)**：
+    - `Mod3_Field_Author.bas`：作者别名库加载、机构角标剥离与消歧认领；
+    - `Mod3_Field_JournalIF.bas`：Title Case 规范化、JIF 字典高速加载与影响因子匹配；
+    - `Mod3_Field_Date.bas`：出版年与日期跨度解析、区间有效性判定；
+    - `Mod3_Field_Deduplication.bas`：题目清洗、归一化字符提取与去重主键生成。
 - **关键数据约束**：
   - **双工作表交付标准 (`papers_final_merged.xlsx`)**：
     - `Sheet 1` (`【课题组入库成果】`)：标准 8 大核心字段（序号、论文题目、期刊名称、卷、期、作者、收录类型、影响因子）；

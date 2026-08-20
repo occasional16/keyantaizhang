@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 在成果交付大表 `papers_final_merged.xlsx`（Sheet 1 与 Sheet 2）末尾新增第 8 列 **`影响因子`**（Col H）；
   - 控制台与交付报告全面升级为 8 列标准交付规格。
 
+### Refactored
+- **VBA 核心引擎分层与字段解耦模块化重构**：
+  - 彻底拆分原 900 行单体大文件，按表现层、统计层、采集层、总控层与专属字段层（作者、期刊/IF、时间、去重键）解耦为 10 个独立轻量级模块；
+  - `Mod_Sync.bas` 升级为动态扫描载入机制，自动枚举 `vba_modules/*.bas` 实现秒级无损热更新；
+  - 彻底消除跨模块公共函数命名冲突，保障后期字段无缝横向扩展。
+
 ## [0.1.0] - 2026-08-20
 
 ### Added
