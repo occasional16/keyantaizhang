@@ -4,13 +4,13 @@
 ' 日期规则:
 '   - 严格以正式出版年份 (PY / Publication year / Year-年) 与出版日期为准
 '   - 若仅有年份，只要年份在指定区间内即视为符合条件
-' 成果表头: 序号 | 论文题目 | 期刊名称 | 卷 | 期 | 作者 | 收录类型 (严格 7 列)
+' 成果表头: 序号 | 论文题目 | 期刊名称 | 卷 | 期 | 作者 | 收录类型 | 影响因子 (标准 8 列)
 ' ==============================================================================
 Option Explicit
 
 Public Sub 清洗所有原始数据()
     Dim rootDir As String, rawDir As String, configPath As String, outPath As String
-    Dim fso As Object, dictTeachers As Object
+    Dim fso As Object, dictTeachers As Object, dictIF As Object
     Dim dictDoi As Object, dictTitle As Object, dictRecs As Object
     Dim totalRaw As Long, totalMerged As Long, acceptedCount As Long, excludedCount As Long, outOfDateCount As Long
     Dim wosCount As Long, eiCount As Long, cnkiCount As Long
@@ -57,6 +57,11 @@ Public Sub 清洗所有原始数据()
     Application.Run "Mod0_ControlPanel.AppendLog", "正在加载教师匹配特征库..."
     On Error GoTo 0
     
+    On Error Resume Next
+    Application.Run "Mod0_ControlPanel.AppendLog", "正在加载期刊影响因子字典 (journal_if.xlsx)..."
+    On Error GoTo 0
+    Set dictIF = LoadJournalIfDictionary(rootDir & Application.PathSeparator & "config" & Application.PathSeparator & "journal_if.xlsx")
+
     Set dictTeachers = LoadTeacherAliasDictionary(configPath)
     If dictTeachers.Count = 0 Then
         MsgBox "教师特征库为空！请先执行【步骤 1: 完善教师拼音与检索特征库】。", vbExclamation, "特征库未就绪"
@@ -96,10 +101,10 @@ Public Sub 清洗所有原始数据()
     Set wbOut = GetOrCreateOutputWorkbook(outPath, wsOut, wsExc)
     
     If wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row >= 2 Then
-        wsOut.Range("A2:G" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).ClearContents
+        wsOut.Range("A2:H" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).ClearContents
     End If
     If wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row >= 2 Then
-        wsExc.Range("A2:G" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).ClearContents
+        wsExc.Range("A2:H" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).ClearContents
     End If
     
     Dim kVar As Variant, rec As Variant, rawAuthorStr As String
@@ -118,6 +123,7 @@ Public Sub 清洗所有原始数据()
             wsOut.Cells(acceptedCount + 1, 5).Value = rec(3)
             wsOut.Cells(acceptedCount + 1, 6).Value = rec(4)
             wsOut.Cells(acceptedCount + 1, 7).Value = rec(6)
+            wsOut.Cells(acceptedCount + 1, 8).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
         Else
             ' 未认领/排除成果 -> 写入 Sheet 2
             excludedCount = excludedCount + 1
@@ -131,6 +137,7 @@ Public Sub 清洗所有原始数据()
             wsExc.Cells(excludedCount + 1, 5).Value = rec(3)
             wsExc.Cells(excludedCount + 1, 6).Value = rawAuthorStr
             wsExc.Cells(excludedCount + 1, 7).Value = rec(6)
+            wsExc.Cells(excludedCount + 1, 8).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
         End If
     Next kVar
     
@@ -720,7 +727,7 @@ End Function
 Private Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Worksheet, ByRef wsExc As Worksheet) As Workbook
     Dim fso As Object, wb As Workbook, headers As Variant, c As Long
     Set fso = CreateObject("Scripting.FileSystemObject")
-    headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "收录类型")
+    headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "收录类型", "影响因子")
     
     If fso.FileExists(outPath) Then
         On Error Resume Next
@@ -754,18 +761,18 @@ Private Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Wor
 End Function
 
 Private Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
-    With ws.Range("A1:G1")
+    With ws.Range("A1:H1")
         .Font.Name = "微软雅黑": .Font.Size = 11: .Font.Bold = True: .Font.Color = RGB(24, 76, 120)
         .Interior.Color = RGB(238, 245, 252): .HorizontalAlignment = xlCenter: .VerticalAlignment = xlCenter
         .RowHeight = 28
     End With
     If lastRow >= 2 Then
-        With ws.Range("A2:G" & lastRow)
+        With ws.Range("A2:H" & lastRow)
             .Font.Name = "微软雅黑": .Font.Size = 10: .VerticalAlignment = xlCenter
         End With
         ws.Range("A2:A" & lastRow).HorizontalAlignment = xlCenter
         ws.Range("D2:E" & lastRow).HorizontalAlignment = xlCenter
-        ws.Range("G2:G" & lastRow).HorizontalAlignment = xlCenter
+        ws.Range("G2:H" & lastRow).HorizontalAlignment = xlCenter
         ws.Range("B2:C" & lastRow).HorizontalAlignment = xlLeft
         ws.Range("F2:F" & lastRow).HorizontalAlignment = xlLeft
     End If
@@ -776,6 +783,115 @@ Private Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
     ws.Columns("E").ColumnWidth = 8
     ws.Columns("F").ColumnWidth = 35
     ws.Columns("G").ColumnWidth = 16
+    ws.Columns("H").ColumnWidth = 12
     ws.Activate
     ActiveWindow.DisplayGridlines = True
 End Sub
+
+' ------------------------------------------------------------------------------
+' 辅助函数: 加载期刊影响因子字典 (config/journal_if.xlsx)
+' ------------------------------------------------------------------------------
+Private Function LoadJournalIfDictionary(configPath As String) As Object
+    Dim d As Object
+    Set d = CreateObject("Scripting.Dictionary")
+    
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If Not fso.FileExists(configPath) Then
+        Set LoadJournalIfDictionary = d
+        Exit Function
+    End If
+    
+    Dim wb As Workbook, ws As Worksheet, isAlreadyOpen As Boolean
+    Dim lastRow As Long, dataArr As Variant, r As Long
+    Dim jName As String, ifVal As String, normKey As String
+    
+    On Error Resume Next
+    Set wb = Workbooks(fso.GetFileName(configPath))
+    If wb Is Nothing Then
+        Set wb = Workbooks.Open(configPath, ReadOnly:=True, AddToMru:=False)
+        isAlreadyOpen = False
+    Else
+        isAlreadyOpen = True
+    End If
+    On Error GoTo 0
+    
+    If wb Is Nothing Then
+        Set LoadJournalIfDictionary = d
+        Exit Function
+    End If
+    
+    On Error Resume Next
+    Set ws = wb.Sheets(1)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        If Not isAlreadyOpen Then wb.Close SaveChanges:=False
+        Set LoadJournalIfDictionary = d
+        Exit Function
+    End If
+    
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    If lastRow >= 2 Then
+        dataArr = ws.Range("A2:G" & lastRow).Value2
+        For r = 1 To UBound(dataArr, 1)
+            jName = Trim(CStr(dataArr(r, 1)))
+            ifVal = Trim(CStr(dataArr(r, 7)))
+            If jName <> "" And ifVal <> "" And UCase(ifVal) <> "N/A" Then
+                normKey = NormalizeJournalForIfMatch(jName)
+                If normKey <> "" Then
+                    If Not d.Exists(normKey) Then
+                        d(normKey) = ifVal
+                    End If
+                End If
+            End If
+        Next r
+    End If
+    
+    If Not isAlreadyOpen And Not wb Is Nothing Then
+        wb.Close SaveChanges:=False
+    End If
+    
+    Set LoadJournalIfDictionary = d
+End Function
+
+Private Function NormalizeJournalForIfMatch(ByVal jName As String) As String
+    Dim s As String
+    s = UCase(Trim(jName))
+    If s = "" Then NormalizeJournalForIfMatch = "": Exit Function
+    s = Replace(s, " ", "")
+    s = Replace(s, "-", "")
+    s = Replace(s, ".", "")
+    s = Replace(s, ",", "")
+    s = Replace(s, ":", "")
+    s = Replace(s, ";", "")
+    s = Replace(s, "'", "")
+    s = Replace(s, """", "")
+    s = Replace(s, "(", "")
+    s = Replace(s, ")", "")
+    s = Replace(s, "/", "")
+    s = Replace(s, "\", "")
+    s = Replace(s, "&", "")
+    s = Replace(s, "_", "")
+    NormalizeJournalForIfMatch = s
+End Function
+
+Private Function GetJournalIfValue(ByVal journalName As String, dictIF As Object) As Variant
+    If dictIF Is Nothing Then GetJournalIfValue = "": Exit Function
+    If dictIF.Count = 0 Then GetJournalIfValue = "": Exit Function
+    
+    Dim normKey As String
+    normKey = NormalizeJournalForIfMatch(journalName)
+    If normKey <> "" Then
+        If dictIF.Exists(normKey) Then
+            Dim v As String
+            v = dictIF(normKey)
+            If IsNumeric(v) Then
+                GetJournalIfValue = CDbl(v)
+            Else
+                GetJournalIfValue = v
+            End If
+            Exit Function
+        End If
+    End If
+    GetJournalIfValue = ""
+End Function

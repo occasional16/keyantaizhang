@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **期刊影响因子 (JIF) 自动匹配与第 8 列输出**：
+  - 新增 `config/journal_if.xlsx` 高速哈希字典载入与期刊名称字母数字归一化匹配引擎；
+  - 在成果交付大表 `papers_final_merged.xlsx`（Sheet 1 与 Sheet 2）末尾新增第 8 列 **`影响因子`**（Col H）；
+  - 控制台与交付报告全面升级为 8 列标准交付规格。
+
 ## [0.1.0] - 2026-08-20
 
 ### Added

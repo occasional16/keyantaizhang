@@ -88,9 +88,9 @@ English documentation: [README.md](README.md)
 
 ---
 
-## 📊 3. 课题组 7 大核心台账字段规范
+## 📊 3. 课题组 8 大核心台账字段规范
 
-打开生成的 [`papers_final_merged.xlsx`](papers_final_merged.xlsx)，包含完整的 7 大标准字段：
+打开生成的 [`papers_final_merged.xlsx`](papers_final_merged.xlsx)，包含完整的 8 大标准字段：
 
 | 列号 | 字段名称 | 规范与示例说明 |
 | :---: | :--- | :--- |
@@ -101,6 +101,7 @@ English documentation: [README.md](README.md)
 | **E** | **期** | 纯净期号（Issue，如 *4*） |
 | **F** | **作者** | 入库表仅保留属于本课题组人员姓名（多位成员用分号 `; ` 间隔，如 *Zhang, Jianfu; Feng, Pingfa*）；排除表保留原库作者全文。 |
 | **G** | **收录类型** | `SCI`、`EI`、`中文核心`，跨库双收录成果精准标注为 **`SCI+EI`** |
+| **H** | **影响因子** | 自动匹配 [`config/journal_if.xlsx`](config/journal_if.xlsx) 最权威 JIF 数值（如 *8.2*, *6.9*, *14.2*），支持在 Excel 中直接降序排序 |
 
 ---
 

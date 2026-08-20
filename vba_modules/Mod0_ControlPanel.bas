@@ -565,7 +565,7 @@ Public Sub 一键执行业务全流程()
                     "系统将一次性自动完成：" & vbCrLf & _
                     "  1. 自动构建完善教师拼音与多格式别名库；" & vbCrLf & _
                     "  2. 按照设定的发表时间范围多源抽取 WOS/EI/知网；" & vbCrLf & _
-                    "  3. 智能消歧认领、跨库去重并直出 7 列交付大表；" & vbCrLf & _
+                    "  3. 智能消歧认领、跨库去重并直出 8 列交付大表 (含影响因子)；" & vbCrLf & _
                     "  4. 自动刷新数据看板并生成全量交付总结报告。", _
                     vbQuestion + vbYesNo, "一键全流程")
     If answer <> vbYes Then Exit Sub
@@ -585,7 +585,7 @@ Public Sub 一键执行业务全流程()
     
     ' 3. 全面刷新数据看板
     Call 刷新控制面板数据
-    Call AppendLog("【全流程完成】已成功直出 7 列交付大表 papers_final_merged.xlsx！")
+    Call AppendLog("【全流程完成】已成功直出 8 列交付大表 (含影响因子) papers_final_merged.xlsx！")
     On Error GoTo 0
     
     Application.ScreenUpdating = True
@@ -626,7 +626,7 @@ Public Sub 一键执行业务全流程()
                     "一、 原始数据采集概况：" & vbCrLf & _
                     "  - 原始记录总计：" & rawTotalNum & " 条 (WOS " & wosNum & " | EI " & eiNum & " | 知网 " & cnkiNum & ")" & vbCrLf & _
                     "  - 归属认领基准：" & teacherNum & " 位课题组师生/研究人员" & vbCrLf & vbCrLf & _
-                    "二、 本室正式入库成果 (7 列标准终稿表)：" & vbCrLf & _
+                    "二、 课题组正式入库成果 (8 列标准终稿表，含影响因子)：" & vbCrLf & _
                     "  - 正式入库总量：" & finalNum & " 篇" & vbCrLf & _
                     "  - 收录结构细分：" & vbCrLf & _
                     "      * SCI 论文：" & sciNum & vbCrLf & _
@@ -637,7 +637,7 @@ Public Sub 一键执行业务全流程()
                     "  - 非本室/未认领条目：" & excDetail & vbCrLf & _
                     "  - 判定准则：严格以出版年份(PY)为准，无本室教师成果安全排除" & vbCrLf & vbCrLf & _
                     "四、 成果交付文件：" & vbCrLf & _
-                    "  - 最终成果大表：papers_final_merged.xlsx (7 大核心字段已就绪)"
+                    "  - 最终成果大表：papers_final_merged.xlsx (8 大核心字段已就绪，含影响因子)"
     
     MsgBox summaryReport, vbInformation + vbOKOnly, "论文整理全流程已就绪"
 End Sub

@@ -68,20 +68,21 @@ Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
        │
        ▼
 [ Output Ledger: papers_final_merged.xlsx ]
-  ├── Sheet 1: [ Claimed Group Papers ] (7 standard columns + SCI/EI composite tags)
-  └── Sheet 2: [ Excluded / Unclaimed Papers ] (Full raw author info for trace & audit)
+  ├── Sheet 1: [ Claimed Group Papers ] (8 standard columns + SCI/EI composite tags + Impact Factor)
+  └── Sheet 2: [ Excluded / Unclaimed Papers ] (Full raw author info for trace & audit + Impact Factor)
 ```
 
 1. **Member Disambiguation**: Matches paper authors against all pinyin permutations and abbreviations of group members.
 2. **Official Publication Year**: Strictly filters by `PY` / `Publication year` / `Year-年` to eliminate online-first cross-year discrepancies.
 3. **Double-Key Deduplication**: Primary key `DOI` + secondary key `Clean Title Hash` to merge duplicates and label composite indexed items (e.g. `SCI+EI`).
-4. **100% Dynamic Statistics**: Real-time row-by-row scanning of actual results on dashboard; zero historical estimation or hardcoding.
+4. **Impact Factor Matching**: Automatically queries `config/journal_if.xlsx` to populate Journal Impact Factor (JIF) values.
+5. **100% Dynamic Statistics**: Real-time row-by-row scanning of actual results on dashboard; zero historical estimation or hardcoding.
 
 ---
 
-## 📊 4. Standard 7-Column Output Specifications
+## 📊 4. Standard 8-Column Output Specifications
 
-The generated [`papers_final_merged.xlsx`](papers_final_merged.xlsx) contains 7 standard columns:
+The generated [`papers_final_merged.xlsx`](papers_final_merged.xlsx) contains 8 standard columns:
 
 | Column | Field Name | Description |
 | :---: | :--- | :--- |
@@ -92,6 +93,7 @@ The generated [`papers_final_merged.xlsx`](papers_final_merged.xlsx) contains 7 
 | **E** | **期 (Issue)** | Clean Issue number |
 | **F** | **作者 (Authors)** | Sheet 1: Group members only (separated by `; `). Sheet 2: Full raw authors. |
 | **G** | **收录类型 (Index)** | `SCI`, `EI`, `中文核心`, or composite `SCI+EI` |
+| **H** | **影响因子 (Impact Factor)** | Matched Journal Impact Factor from `config/journal_if.xlsx` |
 
 ---
 
