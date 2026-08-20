@@ -2,8 +2,8 @@
 
 > **产品全称**：科研台账 (keyantaizhang)  
 > **核心定位**：课题组学术成果智能整理与多维统计工作台 (Research Group Scholarly Output & Ledger Hub)  
-> **版本**：v4.4 (双工作表台账直出与 100% 动态实测统计版)  
-> **更新时间**：2026-08-19  
+> **版本**：v0.1.0 (双工作表台账直出与 100% 动态实测统计版)  
+> **更新时间**：2026-08-20  
 > **核心原则**：
 > 1. **全相对路径原则**：所有 VBA 与脚本严禁硬编码绝对路径，必须通过 `ThisWorkbook.Path` 动态获取根目录，保证项目随处拷贝移动 100% 正常运行。
 > 2. **双核解耦架构**：采用独立的 [`Mod_Sync.bas`](../vba_modules/Mod_Sync.bas) 作为底座负责秒级热载入，业务全流程调度在 [`Mod0_ControlPanel.bas`](../vba_modules/Mod0_ControlPanel.bas)，支持随时无损更新。
@@ -17,8 +17,13 @@
 
 ## 一、 系统顶层架构与目录设计
 
-```
+```text
 📁 科研台账系统根目录/              # 项目根目录（动态自适应相对路径 ThisWorkbook.Path）
+│
+├── 📄 PROJECT.md                   # 【项目专属依据】产品边界、兼容范围、技术约束与验证清单
+├── 📄 AGENTS.md                    # 【开发与授权规范】通用 Agent 协作与开发行为准则
+├── 📄 CHANGELOG.md                 # 【版本变更日志】遵循 Keep a Changelog 规范
+├── 📄 .project-template.json       # 【工程元数据】模板管理与哈希校验清单
 │
 ├── 📂 config/                      # 【人员台账与字典层】
 │   ├── teachers_profile.xlsx       # 课题组师生档案库（姓名、团队、方向、全格式拼音库）
@@ -33,18 +38,22 @@
 ├── 🎮 console_dashboard.xlsm       # 【科研台账交互工作台】（日常单工作表操作工作台）
 ├── 🏆 papers_final_merged.xlsx     # 成果交付大表（Sheet1入库成果 + Sheet2未认领排除成果）
 │
-├── 📂 vba_modules/                 # 【核心 VBA 源代码模块】（纯文本 .bas，Git版本受控）
+├── 📂 vba_modules/                 # 【核心 VBA 源代码模块】（纯文本 .bas，GBK编码版本受控）
 │   ├── Mod_Sync.bas                # 【⭐ 独立热更底座】专职负责一键秒级无损同步所有模块并重构UI
 │   ├── Mod0_ControlPanel.bas       # 控制台交互、状态看板、业务全流程调度与交付报告引擎
 │   ├── Mod1_TeacherPinyin.bas      # 师生多格式拼音与检索特征构建子引擎
 │   └── Mod2_CleanRawData.bas       # 多源抽取、日期校验、消歧、去重、双工作表直出子引擎
 │
-├── 📂 docs/                        # 【系统文档与变更规范】
+├── 📂 docs/                        # 【系统详细规范与开发文档】
 │   ├── PIPELINE_SPEC.md            # 全流程业务与跨数据库字段映射规范说明书（本文件）
-│   └── CHANGELOG.md                # 需求变更与版本迭代日志
+│   ├── release.md                  # 发布流程与门禁规范
+│   └── dev/                        # 研发工作文档与决策记录
+│       ├── README.md               # 工作文档生命周期与管理规范
+│       └── 0.1-01-architecture-and-governance.md # 架构核查与工程化治理文档
 │
 ├── 📂 .vscode/                     # VS Code 编辑器配置（自动识别 GBK 编码）
-├── 📄 README.md                    # 用户使用操作手册
+├── 📄 README.md                    # 英文说明与快速入门
+├── 📄 README.zh-CN.md              # 详尽中文使用说明手册
 └── 📄 .gitignore                   # Git 排除规则（忽略数据文件，追踪源码文档）
 ```
 

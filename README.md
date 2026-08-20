@@ -1,121 +1,105 @@
-# 📊 科研台账 (keyantaizhang)
+# 📊 Research Group Scholarly Output & Ledger Hub (keyantaizhang)
 
-> **课题组学术成果智能整理与多维统计工作台 (Research Group Scholarly Output & Ledger Hub)**  
-> **官方标语**：*“课题组学术家底，一账摸清、一键直出。”*  
-> 专为高校与科研院所 PI（课题组长/导师）、学术秘书及研究生打造，告别散乱手工 Excel，一键把 WOS、EI、知网等原始记录汇聚为课题组专属的“成果总台账”！
+> **Intelligent Academic Output Ledger & Multi-dimensional Statistics Hub for Research Groups and PIs.**  
+> *"Clarify research assets in one ledger; generate standard reports in one click."*
 
----
-
-## 📁 1. 项目目录结构一览
-
-```
-📁 科研台账系统根目录/
-│
-├── 📂 config/                    # 【人员台账与字典层】
-│   ├── teachers_profile.xlsx     # 课题组师生档案库（姓名、团队、方向、全格式拼音别名库）
-│   └── journal_if.xlsx           # 期刊影响因子(IF)与分区字典（预留拓展）
-│
-├── 📂 raw_data/                  # 【原始成果数据层】（各大数据库导出的原始文件直接放入）
-│   ├── WOS.txt / WOS.xlsx        # Web of Science (WOS) 官方导出 (🥇首选 Tab delimited 制表符文本)
-│   ├── EI.xlsx / EI.xls          # EI Compendex 官方导出 (🥇首选 Excel 详细记录)
-│   ├── CNKI.xls / CNKI.xlsx      # 中国知网 (CNKI) 官方导出 (🥇首选 自定义Excel)
-│   └── scopus.csv                # Scopus 官方导出 (备用)
-│
-├── 🎮 console_dashboard.xlsm     # 【⭐ 科研台账交互工作台】（日常单工作表全局总控面板）
-├── 🏆 papers_final_merged.xlsx   # 【⭐ 成果交付大表】（自动直出 7 大核心字段终稿台账）
-│
-├── 📂 vba_modules/               # 【VBA 源码与算法引擎】（底层程序代码，版本受控）
-│   ├── Mod_Sync.bas              # 【⭐ 热更底座】专职秒级同步本地最新代码并重置面板
-│   ├── Mod0_ControlPanel.bas     # 控制台交互、状态看板、操作指引与业务调度引擎
-│   ├── Mod1_TeacherPinyin.bas    # 师生多格式英文拼音与别名特征构建子引擎
-│   └── Mod2_CleanRawData.bas     # 多源抽取、时间过滤、消歧认领、跨库去重与直出子引擎
-└── 📂 docs/                      # 【详细规范文档】
-    ├── PIPELINE_SPEC.md          # 全流程业务与跨数据库字段映射规范说明书
-    └── CHANGELOG.md              # 需求变更与版本迭代日志
-```
+Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
 ---
 
-## 🚀 2. 极简操作流程与系统工作原理
+## 📁 1. Project Directory Structure
 
-### 🌟 极简操作流程（3 步搞定）
+```text
+📁 keyantaizhang/
+│
+├── 📄 PROJECT.md                 # [Project Context] Scope, constraints, validation, and release info
+├── 📄 AGENTS.md                  # [Governance] Agent workflow and authorization guidelines
+├── 📄 CHANGELOG.md               # [Changelog] Version history following Keep a Changelog
+├── 📄 .project-template.json     # [Manifest] Template tracking manifest (v2)
+│
+├── 📂 config/                    # [Profiles & Dicts]
+│   ├── teachers_profile.xlsx     # Member roster (names, teams, directions, alias database)
+│   └── journal_if.xlsx           # Journal Impact Factor / Quartile dictionary (reserved)
+│
+├── 📂 raw_data/                  # [Raw Input Layer] (Official database exports, read-only)
+│   ├── WOS.txt / WOS.xlsx        # Web of Science exports (Tab-delimited .txt preferred)
+│   ├── EI.xlsx / EI.xls          # EI Compendex exports (Detailed record Excel preferred)
+│   ├── CNKI.xls / CNKI.xlsx      # CNKI exports (Custom Excel format)
+│   └── scopus.csv                # Scopus exports (Optional)
+│
+├── 🎮 console_dashboard.xlsm     # [Interactive Dashboard] Control panel & status board
+├── 🏆 papers_final_merged.xlsx   # [Output Ledger] Sheet1: Claimed papers | Sheet2: Excluded papers
+│
+├── 📂 vba_modules/               # [VBA Core Engine] (Version-controlled GBK source code)
+│   ├── Mod_Sync.bas              # Independent hot-sync base module
+│   ├── Mod0_ControlPanel.bas     # Control panel interaction and workflow orchestrator
+│   ├── Mod1_TeacherPinyin.bas    # Pinyin variant and alias feature generator
+│   └── Mod2_CleanRawData.bas     # Multi-source extraction, filtering, deduplication & delivery
+│
+└── 📂 docs/                      # [Specifications & Dev Docs]
+    ├── PIPELINE_SPEC.md          # Multi-source field mapping and cleaning rules
+    ├── release.md                # Release gates and verification guide
+    └── dev/                      # Development documents and decision records
+        ├── README.md             # Dev doc lifecycle and review rules
+        └── 0.1-01-architecture-and-governance.md # Governance & architecture alignment
+```
 
-| 步骤 | 操作动作 | 详细说明 |
+---
+
+## 🚀 2. Quickstart (3-Step Workflow)
+
+| Step | Action | Description |
 | :---: | :--- | :--- |
-| **第 1 步** | **准备基础数据** | 将从 WOS、EI、知网导出的原始文件直接放入 [`raw_data/`](raw_data/)，在 [`config/teachers_profile.xlsx`](config/teachers_profile.xlsx) 填入课题组师生姓名。 |
-| **第 2 步** | **设定统计时间** | 双击打开 [`console_dashboard.xlsm`](console_dashboard.xlsm)，在面板中直接填入或点击胶囊按钮设定年份范围（默认填充当年 `2026-01-01` ~ `2026-12-31`）。 |
-| **第 3 步** | **一键生成台账** | 点击右上角橙色大按钮 **`[ >>> 一键自动化执行全流程 <<< ]`**，系统一次性自动完成消歧认领、跨库去重与复合标记，在根目录直接直出交付大表 [`papers_final_merged.xlsx`](papers_final_merged.xlsx)！ |
+| **1** | **Prepare Data** | Place raw export files (WOS, EI, CNKI) in [`raw_data/`](raw_data/) and populate member names in [`config/teachers_profile.xlsx`](config/teachers_profile.xlsx). |
+| **2** | **Set Year Range** | Open [`console_dashboard.xlsm`](console_dashboard.xlsm) and configure the target publication date range (defaults to current full year). |
+| **3** | **One-Click Run** | Click the orange button **`[ >>> 一键自动化执行全流程 <<< ]`** to automatically perform date filtering, disambiguation, deduplication, and output [`papers_final_merged.xlsx`](papers_final_merged.xlsx). |
 
 ---
 
-### 💡 系统底层三大核心工作原理
+## 💡 3. Core Engine Pipeline
 
-```
-[ 原始成果数据 raw_data/ ] ---> (1. 正式出版年份校验) ---> [ 在期成果流 ]
-                                                              │
-[ 师生档案库 config/    ] ---> (2. 拼音特征消歧认领) <--------┤ (非本组条目安全排除)
-                                                              │
-                                                              ▼
-[ 跨库去重与复合标记   ] <--- (3. DOI+题目哈希双重去重) <---- [ 本组在期成果 ]
+```text
+[ Raw Data: raw_data/ ] ---> (1. Official Publication Year Filter) ---> [ In-Period Records ]
+                                                                               │
+[ Member Roster: config/ ] -> (2. Pinyin Disambiguation & Claiming) <----------┤ (Non-members to Sheet 2)
+                                                                               │
+                                                                               ▼
+[ Cross-DB Deduplication ] <- (3. DOI + Clean Title Double-Key Hash) <--------- [ Claimed Papers ]
        │
        ▼
-[ 直出 7 列交付大表 papers_final_merged.xlsx ] (支持 SCI+EI 复合收录标注)
+[ Output Ledger: papers_final_merged.xlsx ]
+  ├── Sheet 1: [ Claimed Group Papers ] (7 standard columns + SCI/EI composite tags)
+  └── Sheet 2: [ Excluded / Unclaimed Papers ] (Full raw author info for trace & audit)
 ```
 
-1. **智能消歧与安全认领**：
-   - 基于课题组固定人员的全格式英文拼音、缩写变体与检索特征库，对论文作者进行深度模糊匹配；
-   - **严格准入**：仅保留本组人员为作者的成果直出终稿，整篇无本组师生的条目自动安全排除，并在控制台单行备注排除明细。
-2. **正式出版年份精准过滤**：
-   - 严格依据官方正式出版年份（`PY` / `Publication year` / `Year-年`）为过滤准绳，排除网络预发表跨年干扰，确保年度统计数据的权威性与严谨性。
-3. **跨库去重与复合收录合流**：
-   - 采用 **`DOI` 主键 + `纯净题目哈希` 备用键** 双重消歧算法，完美消除 WOS、EI、知网之间的重复收录；
-   - 跨库重复成果自动合并并标记为 **`SCI+EI`** 复合收录标签，字段智能互补。
+1. **Member Disambiguation**: Matches paper authors against all pinyin permutations and abbreviations of group members.
+2. **Official Publication Year**: Strictly filters by `PY` / `Publication year` / `Year-年` to eliminate online-first cross-year discrepancies.
+3. **Double-Key Deduplication**: Primary key `DOI` + secondary key `Clean Title Hash` to merge duplicates and label composite indexed items (e.g. `SCI+EI`).
+4. **100% Dynamic Statistics**: Real-time row-by-row scanning of actual results on dashboard; zero historical estimation or hardcoding.
 
 ---
 
-## 📊 3. 课题组 7 大核心台账字段规范
+## 📊 4. Standard 7-Column Output Specifications
 
-打开生成的 [`papers_final_merged.xlsx`](papers_final_merged.xlsx)，包含完整的 7 大标准字段：
+The generated [`papers_final_merged.xlsx`](papers_final_merged.xlsx) contains 7 standard columns:
 
-| 列号 | 字段名称 | 规范与示例说明 |
+| Column | Field Name | Description |
 | :---: | :--- | :--- |
-| **A** | **序号** | 从 1 开始自增纯数字编号（1, 2, 3...） |
-| **B** | **论文题目** | 英文首字母大写规范，末尾无多余句点（如 *Aerodynamic drag study of speed skaters*） |
-| **C** | **期刊名称** | 严格 **Title Case** 英文标题大小写规范（如 *Journal of Manufacturing Processes*） |
-| **D** | **卷** | 纯净卷号（Volume，如 *133*） |
-| **E** | **期** | 纯净期号（Issue，如 *4*） |
-| **F** | **作者** | 仅保留属于本课题组人员的姓名（多位成员用分号 `; ` 间隔，如 *Zhang, Jianfu; Feng, Pingfa*） |
-| **G** | **收录类型** | `SCI`、`EI`、`中文核心`，跨库双收录成果精准标注为 **`SCI+EI`** |
+| **A** | **序号 (No.)** | Auto-incremented sequence number (1, 2, 3...) |
+| **B** | **论文题目 (Title)** | Capitalized title format without trailing period |
+| **C** | **期刊名称 (Journal)** | Standard Title Case format preserving domain acronyms (e.g., IEEE, ASME) |
+| **D** | **卷 (Volume)** | Clean Volume number |
+| **E** | **期 (Issue)** | Clean Issue number |
+| **F** | **作者 (Authors)** | Sheet 1: Group members only (separated by `; `). Sheet 2: Full raw authors. |
+| **G** | **收录类型 (Index)** | `SCI`, `EI`, `中文核心`, or composite `SCI+EI` |
 
 ---
 
-## 🛠️ 4. 原始数据最高精度导出规范
+## 📖 5. Project Governance & Specifications
 
-为了确保零错列与极速解析，推荐按以下格式导出数据放入 [`raw_data/`](raw_data/)：
-- **WOS (SCI)**：选择 **`Tab delimited file`（制表符分隔文件）**，记录内容勾选 **`Full Record（全记录）`**，命名为 [`raw_data/WOS.txt`](raw_data/WOS.txt)；
-- **EI Compendex**：选择 **`Excel`**，记录内容选择 **`Detailed record`**，勾选 **`include columns without data`**，命名为 [`raw_data/EI.xlsx`](raw_data/EI.xlsx)；
-- **知网 (CNKI)**：自定义导出 Excel，命名为 [`raw_data/CNKI.xls`](raw_data/CNKI.xls)。
-
----
-
-## ❓ 5. 常见问题与答疑 (FAQ)
-
-### Q1：打开 Excel 提示“被阻止的内容 / 宏无法运行”怎么办？
-- **永久彻底解决方法**：
-  1. 在 Excel 点击 **【文件】 $\rightarrow$ 【选项】 $\rightarrow$ 【信任中心】 $\rightarrow$ 【信任中心设置】**；
-  2. 点击左侧 **【受信任位置】 $\rightarrow$ 【添加新位置...】**；
-  3. 浏览选中当前项目根目录，**勾选【同时信任此位置的子文件夹】**，点击确定即可永久关闭拦截！
-
-### Q2：课题组新增了老师或硕博研究生，怎么让他生效？
-- 直接打开 [`config/teachers_profile.xlsx`](config/teachers_profile.xlsx)，在表格最后一行填入新成员的 **中文姓名** 和团队方向并保存；
-- 点击控制台右上角 **`[ >>> 一键自动化执行全流程 <<< ]`**，系统会自动为新增成员构建拼音库并全量重新归属匹配！
-
-### Q3：换了一台新电脑或者把文件夹拷走了，还能用吗？
-- **100% 可以！** 本系统底层全部采用动态相对路径（`ThisWorkbook.Path`），不绑定任何固定盘符或绝对路径，随处移动均能正常运行。
-
----
-
-## 📖 6. 详细技术规范与开发者文档
-- 详见跨数据库字段映射与清洗规则对照表：[`docs/PIPELINE_SPEC.md`](docs/PIPELINE_SPEC.md)
-- 详见版本迭代变更日志：[`docs/CHANGELOG.md`](docs/CHANGELOG.md)
-- 详见 VBA 核心模块源码：[`vba_modules/`](vba_modules/)
+- Project-owned context and technical constraints: [`PROJECT.md`](PROJECT.md)
+- Agent development and authorization guidelines: [`AGENTS.md`](AGENTS.md)
+- Complete pipeline field mapping matrix: [`docs/PIPELINE_SPEC.md`](docs/PIPELINE_SPEC.md)
+- Project version history: [`CHANGELOG.md`](CHANGELOG.md)
+- Release verification checklist: [`docs/release.md`](docs/release.md)
+- Development workspace docs: [`docs/dev/`](docs/dev/)

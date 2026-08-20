@@ -1,0 +1,16 @@
+{
+  "manifestVersion": 2,
+  "template": "bootstrap-code-project",
+  "revision": 2,
+  "profile": "generic",
+  "managedFiles": [
+    "AGENTS.md",
+    "docs/dev/README.md",
+    "docs/release.md"
+  ],
+  "appliedHashes": {
+    "AGENTS.md": "01dbbdee7e52e172493345c5eb38fa0cdb739f2683fb83645163f6d52f7ff0fd",
+    "docs/dev/README.md": "6baef3e5d512e89fa26daa22305a081bcb71dff4c2e1438899820f714e631ced",
+    "docs/release.md": "5ba0bc084a4d70f26ff60ef2479a180011e9de0448e7fcdb4185d3a1e915f162"
+  }
+}
