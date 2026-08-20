@@ -46,10 +46,14 @@
 │
 ├── 📂 docs/                        # 【系统详细规范与开发文档】
 │   ├── PIPELINE_SPEC.md            # 全流程业务与跨数据库字段映射规范说明书（本文件）
+│   ├── DATABASE_RETRIEVAL_GUIDE.md # 各学术数据库高精度检索与导出实操指南
 │   ├── release.md                  # 发布流程与门禁规范
 │   └── dev/                        # 研发工作文档与决策记录
 │       ├── README.md               # 工作文档生命周期与管理规范
-│       └── 0.1-01-architecture-and-governance.md # 架构核查与工程化治理文档
+│       ├── 0.1-01-architecture-and-governance.md # 架构核查与工程化治理文档
+│       ├── 0.1-02-technical-audit-and-optimization.md # 核心引擎查缺补漏方案
+│       └── 0.1-03-database-retrieval-spec-and-definition.md # 检索规范与收录定义讨论
+│
 │
 ├── 📂 .vscode/                     # VS Code 编辑器配置（自动识别 GBK 编码）
 ├── 📄 README.md                    # 英文说明与快速入门
