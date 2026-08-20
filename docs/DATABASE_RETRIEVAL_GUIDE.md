@@ -2,7 +2,7 @@
 
 > 目标：按“实验室署名 + 统计年份 + 收录口径”从 Web of Science、EI Compendex 和中国知网导出候选记录，再由本地系统按成员档案认领、去重和生成台账。Scopus 仅作为补充核查渠道。
 >
-> 最近核验：2026-08-20。数据库界面、字段名和导出上限可能调整；正式批量导出前，必须先执行本文的“小样本验证”。
+> 文档规则核对：2026-08-20。WOS 检索词已根据当前账号的差分实测修正；EI、CNKI、Scopus 仍须在实际订阅界面逐分支验证。数据库界面、索引方式和导出上限可能调整，正式批量导出前必须执行本文的“小样本验证”。
 
 ## 1. 适用边界
 
@@ -26,7 +26,7 @@
 检索时遵循以下规则：
 
 1. 现名与历史名称之间使用 `OR`；机构、年份和文献类型之间使用 `AND`。
-2. 每个机构词都要绑定到数据库对应的机构/地址字段，不能把一组词先括起来、再只给整组末尾添加字段限定，除非平台明确支持这种写法。
+2. 每个机构词都要绑定到数据库对应的机构/地址字段。官网完整名称用于确认机构身份，实际检索词必须适配数据库中的缩写、分词和规范化方式，不能假定地址字段会原样保存完整名称。
 3. 年份尽量写入检索式，并同时核对结果页的出版年筛选；系统最终仍按导出记录中的正式出版年过滤。
 4. 不使用未经当前数据库机构检索页核验的组织 ID。数据库可能拆分、合并或重建机构档案。
 
@@ -37,20 +37,30 @@
 在 **Web of Science Core Collection → Advanced Search** 中选择 **Science Citation Index Expanded (SCI-EXPANDED)**，再运行：
 
 ```text
-AD=(
-  "State Key Laboratory of Tribology in Advanced Equipment"
-  OR "State Key Laboratory of Tribology"
-  OR (SKLT SAME Tsinghua)
-)
-AND PY=2026
+PY=(2025-2026) AND AD=(("State Key Lab* Tribol*" OR "State Key Laboratory of Tribology*" OR SKLT) SAME (Tsinghua OR 100084))
 ```
 
 说明：
 
-- `AD` 是地址字段，`PY` 是出版年字段；`SAME` 将 `SKLT` 与 `Tsinghua` 约束在同一地址中，降低缩写误命中。
-- 不再使用 `"State Key Laboratory of Tribology*"`：它把精确短语与截词混在一起，含义不如显式列出现名和历史名称清楚，也不利于逐项验证。
+- `AD` 是地址字段。WOS 会缩写许多地址词，实际记录常见 `Univ`、`Lab`、`Tribol` 等索引形式；`Univ*`、`Lab*`、`Tribol*` 用于同时召回缩写和完整拼写。
+- `Tribol*` 不能收窄为 `Tribology`。在当前实测中，仅这一变化就造成结果数大幅下降，说明大量地址记录使用了 `Tribol` 等缩写形式。
+- `State Key Lab* SAME Tribol*` 同时覆盖实验室历史名称和重组后的现名；无需把含有 `of`、`in` 的官网完整名称作为精确短语写入 `AD`。WOS 官方也建议地址全名检索时避免这些介词。
+- `SAME` 要求各组词位于同一条作者地址中。加入 `Tsinghua Univ*` 是为了避免命中其他单位的同类实验室，`SKLT` 分支同样必须受此约束。
 - `SCI-EXPANDED` 应在数据库/引文索引范围中限定，不能只凭结果来自 Web of Science 就标记为 SCI。
+- `PY=2026` 用于生成候选集，但 WOS 的 `PY` 检索同时考虑 Early Access Year 和 Final Publication Year，不能单凭结果页年份断言正式出版年；导出后仍须检查 `PY`、`PD`、卷期及正式出版信息。
 - 当前业务口径没有进一步限定 WOS 文献类型。若以后只统计 Article 或 Review，应先确认口径，再增加 `AND DT=(Article OR Review)`；不要在本指南中悄悄缩小成果范围。
+
+首次使用时不要只运行总式。应在相同数据库范围和年份条件下分别比较：
+
+```text
+AD=(Tsinghua Univ* SAME State Key Lab* SAME Tribol*) AND PY=2026
+```
+
+```text
+AD=(Tsinghua Univ* SAME State Key Lab* SAME Tribology) AND PY=2026
+```
+
+第二式仅用于显示“未截词会漏掉多少记录”，不能作为正式检索式。抽查两式的差集，确认新增记录的地址确实属于目标实验室；若差集中出现系统性误命中，再增加地址特征，而不是直接删除 `*`。
 
 将 `2026` 替换为目标正式出版年。跨多年检索可使用平台支持的年份范围，或按年分别检索以便核对数量。
 
@@ -63,18 +73,12 @@ AND PY=2026
 
 ## 4. EI Compendex（Engineering Village）
 
-### 4.1 推荐检索式
+### 4.1 候选检索式（必须在当前账号实测）
 
 在 **Engineering Village → Compendex → Expert Search** 中运行：
 
 ```text
-(
-  ({State Key Laboratory of Tribology in Advanced Equipment} WN AF)
-  OR ({State Key Laboratory of Tribology} WN AF)
-  OR (({SKLT} WN AF) AND ({Tsinghua University} WN AF))
-)
-AND ({JA} WN DT)
-AND ({2026} WN YR)
+(((2025-2026) WN YR AND ((State Key Lab* NEAR/5 Tribol*) OR SKLT) WN AF AND (Tsinghua OR 100084) WN AF) AND ({ja} WN DT))
 ```
 
 说明：
@@ -93,22 +97,27 @@ AND ({2026} WN YR)
 
 ## 5. 中国知网（CNKI）
 
-### 5.1 检索配置
+### 5.1 候选检索配置与专业检索式（必须在当前账号实测）
 
-进入 **高级检索**，数据库范围选择 **学术期刊**，按以下条件配置：
+在 **中国知网 (CNKI) → 高级检索 / 专业检索** 中，数据库范围选择 **学术期刊**，期刊来源类别勾选 **【核心期刊】（北大核心）** 与 **【CSCD】**：
+
+- **专业检索式**：
+  ```text
+  AF % '清华大学' AND (AF % '摩擦' + '高端装备')
+  ```
+  *(说明：`AF` 为作者单位；`%` 表示模糊匹配/包含；`+` 表示逻辑或 OR。该式匹配单位包含“清华大学”，且包含“摩擦”（摩擦学国家重点实验室）或“高端装备”（高端装备界面科学与技术全国重点实验室）。)*
+
+- **高级检索界面条件配置（等效形式）**：
 
 | 逻辑 | 字段 | 匹配方式 | 值 |
 | --- | --- | --- | --- |
-| 第一行 | 作者单位 | 精确短语或平台最接近的短语匹配 | `高端装备界面科学与技术全国重点实验室` |
-| 或者 | 作者单位 | 精确短语或平台最接近的短语匹配 | `摩擦学国家重点实验室` |
-| 并且 | 发表年度 | 精确 | 目标年份，如 `2026` |
+| 第一行 | 作者单位 | 包含/精确 | `高端装备界面科学与技术全国重点实验室` |
+| 或者 | 作者单位 | 包含/精确 | `摩擦学国家重点实验室` |
+| 并且 | 发表年度 | 精确 | 目标年份（如 `2025-2026`） |
 
 重要说明：
-
-- 使用界面中的“或者/OR”连接两条作者单位条件；不要把 `A + B` 直接输入一个文本框。`+` 在不同版本界面中不一定代表 OR，可能被当作普通字符或其他运算。
-- 期刊来源类别选择 **核心期刊（北大核心）** 与 **CSCD** 的并集，并在结果页确认两类筛选是 OR，而不是同时满足的 AND。
-- 若当前界面无法明确表达 OR，分别运行现名和历史名称两次检索，利用导出结果的 DOI/题名去重；不要凭猜测改用未核验的“专业检索”字段代码。
-- CNKI 的界面和可导出字段受机构订阅及版本影响。本节给出的是字段配置，不声称是一条可跨版本复制的专业检索式。
+- 期刊来源类别务必选择 **核心期刊（北大核心）** 与 **CSCD** 的并集。
+- 发表年度根据需要限定目标统计年份（如 `2025-2026`）。
 
 ### 5.2 导出
 
@@ -121,7 +130,7 @@ AND ({2026} WN YR)
 
 Scopus 可用于查漏或交叉核对。不要使用原文档中的 `AF-ID("State Key Laboratory of Tribology" 60021634)`：该 ID 尚未在当前 Scopus 机构选择器中核验，名称与 ID 的组合不能靠猜测固化。
 
-不依赖机构 ID 的推荐式为：
+不依赖机构 ID 的候选式如下；必须先做逐分支计数和地址抽查，不能仅因语法可执行就视为检索有效：
 
 ```text
 (
@@ -168,6 +177,8 @@ AND PUBYEAR IS 2026
 ## 9. 核验依据
 
 - [Web of Science Core Collection：Advanced Search Field Tags](https://webofscience.help.clarivate.com/en-us/Content/wos-core-collection/woscc-search-field-tags.htm)
+- [Web of Science Core Collection：Address 字段、缩写与机构名规则](https://webofscience.help.clarivate.com/en-us/Content/wos-core-collection/woscc-search-fields.htm)
+- [Web of Science：`SAME` 运算符](https://webofscience.help.clarivate.com/Content/search-operators.html)
 - [Web of Science：Search Rules](https://webofscience.help.clarivate.com/en-us/Content/search-rules.htm)
 - [Scopus Support：Advanced Search 字段代码与运算规则](https://www.elsevier.support/scopus/answer/how-can-i-best-use-the-advanced-search)
 - [清华大学机械工程系：State Key Laboratory of Tribology in Advanced Equipment](https://www.me.tsinghua.edu.cn/en/info/1249/1874.htm)
