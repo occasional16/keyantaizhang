@@ -1,6 +1,6 @@
 ' ==============================================================================
 ' 模块名称: Mod2_PipelineMain
-' 核心职责: 科研台账多源清洗总控、记录聚合去重、双工作表 8 列直出与格式化引擎
+' 核心职责: 科研台账多源清洗总控、记录聚合去重、双工作表 9 列直出与格式化引擎
 ' ==============================================================================
 Option Explicit
 
@@ -97,20 +97,23 @@ Public Sub 清洗所有原始数据()
     Set wbOut = GetOrCreateOutputWorkbook(outPath, wsOut, wsExc)
     
     If wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row >= 2 Then
-        wsOut.Range("A2:H" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).ClearContents
+        wsOut.Range("A2:I" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).ClearContents
     End If
     If wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row >= 2 Then
-        wsExc.Range("A2:H" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).ClearContents
+        wsExc.Range("A2:I" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).ClearContents
     End If
     
-    Dim kVar As Variant, rec As Variant, rawAuthorStr As String
+    Dim kVar As Variant, rec As Variant, rawAuthorStr As String, corrStr As String
     acceptedCount = 0
     excludedCount = 0
     
     For Each kVar In dictRecs.Keys
         rec = dictRecs(kVar)
+        corrStr = ""
+        If UBound(rec) >= 8 Then corrStr = CStr(rec(8))
+        
         If Trim(CStr(rec(4))) <> "" Then
-            ' 入库成果 -> 写入 Sheet 1
+            ' 入库成果 -> 写入 Sheet 1 (9 列)
             acceptedCount = acceptedCount + 1
             wsOut.Cells(acceptedCount + 1, 1).Value = acceptedCount
             wsOut.Cells(acceptedCount + 1, 2).Value = rec(0)
@@ -118,10 +121,11 @@ Public Sub 清洗所有原始数据()
             wsOut.Cells(acceptedCount + 1, 4).Value = rec(2)
             wsOut.Cells(acceptedCount + 1, 5).Value = rec(3)
             wsOut.Cells(acceptedCount + 1, 6).Value = rec(4)
-            wsOut.Cells(acceptedCount + 1, 7).Value = rec(6)
-            wsOut.Cells(acceptedCount + 1, 8).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
+            wsOut.Cells(acceptedCount + 1, 7).Value = corrStr
+            wsOut.Cells(acceptedCount + 1, 8).Value = rec(6)
+            wsOut.Cells(acceptedCount + 1, 9).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
         Else
-            ' 未认领/排除成果 -> 写入 Sheet 2
+            ' 未认领/排除成果 -> 写入 Sheet 2 (9 列)
             excludedCount = excludedCount + 1
             rawAuthorStr = ""
             If UBound(rec) >= 7 Then rawAuthorStr = CStr(rec(7))
@@ -132,14 +136,19 @@ Public Sub 清洗所有原始数据()
             wsExc.Cells(excludedCount + 1, 4).Value = rec(2)
             wsExc.Cells(excludedCount + 1, 5).Value = rec(3)
             wsExc.Cells(excludedCount + 1, 6).Value = rawAuthorStr
-            wsExc.Cells(excludedCount + 1, 7).Value = rec(6)
-            wsExc.Cells(excludedCount + 1, 8).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
+            wsExc.Cells(excludedCount + 1, 7).Value = corrStr
+            wsExc.Cells(excludedCount + 1, 8).Value = rec(6)
+            wsExc.Cells(excludedCount + 1, 9).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
         End If
     Next kVar
     
     Call FormatOutputSheet(wsOut, acceptedCount + 1)
     Call FormatOutputSheet(wsExc, excludedCount + 1)
-    wbOut.Save
+    wbOut.Close SaveChanges:=True
+    
+    ThisWorkbook.Activate
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
     
     ' 5. 刷新控制台看板与日志
     On Error Resume Next
@@ -148,7 +157,7 @@ Public Sub 清洗所有原始数据()
 End Sub
 
 Public Sub AddOrMergeRecord(ByVal title As String, ByVal journal As String, ByVal vol As String, ByVal issue As String, _
-                            ByVal matchedAuthors As String, ByVal rawAuthors As String, ByVal doi As String, ByVal srcType As String, _
+                            ByVal matchedAuthors As String, ByVal corrAuthor As String, ByVal rawAuthors As String, ByVal doi As String, ByVal srcType As String, _
                             dictDoi As Object, dictTitle As Object, dictRecs As Object)
     Dim normDoi As String, normT As String
     Dim recId As Long, oldRec As Variant, mergedType As String
@@ -174,10 +183,13 @@ Public Sub AddOrMergeRecord(ByVal title As String, ByVal journal As String, ByVa
         If UBound(oldRec) >= 7 Then
             If Trim(CStr(oldRec(7))) = "" And Trim(rawAuthors) <> "" Then oldRec(7) = rawAuthors
         End If
+        If UBound(oldRec) >= 8 Then
+            oldRec(8) = Mod3_Field_Author.MergeCorrespondingAuthors(CStr(oldRec(8)), corrAuthor)
+        End If
         dictRecs(recId) = oldRec
     Else
         recId = dictRecs.Count + 1
-        Dim newRec(7) As Variant
+        Dim newRec(8) As Variant
         newRec(0) = title
         newRec(1) = journal
         newRec(2) = vol
@@ -186,6 +198,7 @@ Public Sub AddOrMergeRecord(ByVal title As String, ByVal journal As String, ByVa
         newRec(5) = doi
         newRec(6) = srcType
         newRec(7) = rawAuthors
+        newRec(8) = corrAuthor
         dictRecs(recId) = newRec
         
         If normDoi <> "" Then dictDoi(normDoi) = recId
@@ -214,7 +227,7 @@ End Function
 Public Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Worksheet, ByRef wsExc As Worksheet) As Workbook
     Dim fso As Object, wb As Workbook, headers As Variant, c As Long
     Set fso = CreateObject("Scripting.FileSystemObject")
-    headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "收录类型", "影响因子")
+    headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "通讯作者", "收录类型", "影响因子")
     
     If fso.FileExists(outPath) Then
         On Error Resume Next
@@ -248,20 +261,20 @@ Public Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Work
 End Function
 
 Public Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
-    With ws.Range("A1:H1")
+    With ws.Range("A1:I1")
         .Font.Name = "微软雅黑": .Font.Size = 11: .Font.Bold = True: .Font.Color = RGB(24, 76, 120)
         .Interior.Color = RGB(238, 245, 252): .HorizontalAlignment = xlCenter: .VerticalAlignment = xlCenter
         .RowHeight = 28
     End With
     If lastRow >= 2 Then
-        With ws.Range("A2:H" & lastRow)
+        With ws.Range("A2:I" & lastRow)
             .Font.Name = "微软雅黑": .Font.Size = 10: .VerticalAlignment = xlCenter
         End With
         ws.Range("A2:A" & lastRow).HorizontalAlignment = xlCenter
         ws.Range("D2:E" & lastRow).HorizontalAlignment = xlCenter
-        ws.Range("G2:H" & lastRow).HorizontalAlignment = xlCenter
+        ws.Range("H2:I" & lastRow).HorizontalAlignment = xlCenter
         ws.Range("B2:C" & lastRow).HorizontalAlignment = xlLeft
-        ws.Range("F2:F" & lastRow).HorizontalAlignment = xlLeft
+        ws.Range("F2:G" & lastRow).HorizontalAlignment = xlLeft
     End If
     ws.Columns("A").ColumnWidth = 8
     ws.Columns("B").ColumnWidth = 55
@@ -269,8 +282,9 @@ Public Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
     ws.Columns("D").ColumnWidth = 8
     ws.Columns("E").ColumnWidth = 8
     ws.Columns("F").ColumnWidth = 35
-    ws.Columns("G").ColumnWidth = 16
-    ws.Columns("H").ColumnWidth = 12
+    ws.Columns("G").ColumnWidth = 28
+    ws.Columns("H").ColumnWidth = 16
+    ws.Columns("I").ColumnWidth = 12
     ws.Activate
     ActiveWindow.DisplayGridlines = True
 End Sub

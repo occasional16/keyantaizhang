@@ -13,26 +13,19 @@ Public Function IngestWosData(rawDir As String, dictTeachers As Object, _
     wosFile = rawDir & Application.PathSeparator & "WOS.txt"
     isTxt = True
     
-    If Not fso.FileExists(wosFile) Then
-        wosFile = rawDir & Application.PathSeparator & "savedrecs.txt"
-    End If
-    If Not fso.FileExists(wosFile) Then
-        wosFile = rawDir & Application.PathSeparator & "WOS.xlsx"
-        isTxt = False
-    End If
-    If Not fso.FileExists(wosFile) Then
-        wosFile = rawDir & Application.PathSeparator & "savedrecs.xlsx"
-        isTxt = False
-    End If
+    If Not fso.FileExists(wosFile) Then wosFile = rawDir & Application.PathSeparator & "savedrecs.txt"
+    If Not fso.FileExists(wosFile) Then wosFile = rawDir & Application.PathSeparator & "WOS.xlsx": isTxt = False
+    If Not fso.FileExists(wosFile) Then wosFile = rawDir & Application.PathSeparator & "savedrecs.xlsx": isTxt = False
     If Not fso.FileExists(wosFile) Then IngestWosData = 0: Exit Function
     
     Dim count As Long: count = 0
     
     If isTxt Then
         Dim stm As Object, content As String, lines() As String, headers() As String
-        Dim r As Long, c As Long, tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long
+        Dim r As Long, c As Long
+        Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long, rpCol As Long
         Dim fields() As String
-        Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String
+        Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String, rawRP As String
         
         Set stm = CreateObject("ADODB.Stream")
         stm.Type = 2: stm.Charset = "utf-8": stm.Open
@@ -44,7 +37,7 @@ Public Function IngestWosData(rawDir As String, dictTeachers As Object, _
         If UBound(lines) < 1 Then IngestWosData = 0: Exit Function
         
         headers = Split(Replace(lines(0), vbCr, ""), vbTab)
-        tiCol = -1: soCol = -1: vlCol = -1: isCol = -1: auCol = -1: diCol = -1: pyCol = -1: pdCol = -1
+        tiCol = -1: soCol = -1: vlCol = -1: isCol = -1: auCol = -1: diCol = -1: pyCol = -1: pdCol = -1: rpCol = -1
         For c = LBound(headers) To UBound(headers)
             Select Case Trim(headers(c))
                 Case "TI", "Article Title", "Title": tiCol = c
@@ -55,13 +48,14 @@ Public Function IngestWosData(rawDir As String, dictTeachers As Object, _
                 Case "DI", "DOI": diCol = c
                 Case "PY", "Publication Year", "Year": pyCol = c
                 Case "PD", "Publication Date": pdCol = c
+                Case "RP", "Reprint Author", "Reprint Authors", "Corresponding Author": rpCol = c
             End Select
         Next c
         
         For r = 1 To UBound(lines)
             If Trim(Replace(lines(r), vbCr, "")) <> "" Then
                 fields = Split(Replace(lines(r), vbCr, ""), vbTab)
-                rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = ""
+                rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = "": rawRP = ""
                 If tiCol >= 0 And tiCol <= UBound(fields) Then rawTitle = fields(tiCol)
                 If soCol >= 0 And soCol <= UBound(fields) Then rawSO = fields(soCol)
                 If vlCol >= 0 And vlCol <= UBound(fields) Then rawVL = fields(vlCol)
@@ -70,12 +64,14 @@ Public Function IngestWosData(rawDir As String, dictTeachers As Object, _
                 If diCol >= 0 And diCol <= UBound(fields) Then rawDOI = fields(diCol)
                 If pyCol >= 0 And pyCol <= UBound(fields) Then rawPY = fields(pyCol)
                 If pdCol >= 0 And pdCol <= UBound(fields) Then rawPD = fields(pdCol)
+                If rpCol >= 0 And rpCol <= UBound(fields) Then rawRP = fields(rpCol)
                 
                 If Trim(rawTitle) <> "" Then
                     count = count + 1
                     If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                         Call AddOrMergeRecord(CleanPaperTitle(rawTitle), ConvertToTitleCase(rawSO), _
                                               Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
+                                              ExtractLabCorrespondingAuthors(rawRP, "SCI", dictTeachers), _
                                               Trim(rawAU), Trim(rawDOI), "SCI", dictDoi, dictTitle, dictRecs)
                     Else
                         outOfDateCount = outOfDateCount + 1
@@ -100,12 +96,13 @@ Public Function IngestWosData(rawDir As String, dictTeachers As Object, _
                 Case "DI", "DOI": diCol = c
                 Case "PY", "Publication Year", "Year": pyCol = c
                 Case "PD", "Publication Date": pdCol = c
+                Case "RP", "Reprint Author", "Reprint Authors", "Corresponding Author": rpCol = c
             End Select
         Next c
         
         lr = wsRaw.Cells(wsRaw.Rows.Count, IIf(tiCol > 0, tiCol, 1)).End(xlUp).Row
         For r = 2 To lr
-            rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = ""
+            rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = "": rawRP = ""
             If tiCol > 0 Then rawTitle = wsRaw.Cells(r, tiCol).Value
             If soCol > 0 Then rawSO = wsRaw.Cells(r, soCol).Value
             If vlCol > 0 Then rawVL = wsRaw.Cells(r, vlCol).Value
@@ -114,12 +111,14 @@ Public Function IngestWosData(rawDir As String, dictTeachers As Object, _
             If diCol > 0 Then rawDOI = wsRaw.Cells(r, diCol).Value
             If pyCol > 0 Then rawPY = wsRaw.Cells(r, pyCol).Value
             If pdCol > 0 Then rawPD = wsRaw.Cells(r, pdCol).Value
+            If rpCol > 0 Then rawRP = wsRaw.Cells(r, rpCol).Value
             
             If Trim(rawTitle) <> "" Then
                 count = count + 1
                 If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                     Call AddOrMergeRecord(CleanPaperTitle(rawTitle), ConvertToTitleCase(rawSO), _
                                           Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
+                                          ExtractLabCorrespondingAuthors(rawRP, "SCI", dictTeachers), _
                                           Trim(rawAU), Trim(rawDOI), "SCI", dictDoi, dictTitle, dictRecs)
                 Else
                     outOfDateCount = outOfDateCount + 1
@@ -147,8 +146,8 @@ Public Function IngestEiData(rawDir As String, dictTeachers As Object, _
     If Not fso.FileExists(eiFile) Then IngestEiData = 0: Exit Function
     
     Dim wbRaw As Workbook, wsRaw As Worksheet, lr As Long, r As Long, c As Long
-    Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long
-    Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String
+    Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long, caCol As Long
+    Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String, rawCA As String
     Dim count As Long: count = 0
     
     Set wbRaw = Workbooks.Open(eiFile, ReadOnly:=True)
@@ -163,12 +162,13 @@ Public Function IngestEiData(rawDir As String, dictTeachers As Object, _
             Case "DOI": diCol = c
             Case "Publication year": pyCol = c
             Case "Issue date": pdCol = c
+            Case "Corresponding author(s)", "Corresponding author", "Corresponding Author": caCol = c
         End Select
     Next c
     
     lr = wsRaw.Cells(wsRaw.Rows.Count, IIf(tiCol > 0, tiCol, 1)).End(xlUp).Row
     For r = 2 To lr
-        rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = ""
+        rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = "": rawCA = ""
         If tiCol > 0 Then rawTitle = wsRaw.Cells(r, tiCol).Value
         If soCol > 0 Then rawSO = wsRaw.Cells(r, soCol).Value
         If vlCol > 0 Then rawVL = wsRaw.Cells(r, vlCol).Value
@@ -177,12 +177,14 @@ Public Function IngestEiData(rawDir As String, dictTeachers As Object, _
         If diCol > 0 Then rawDOI = wsRaw.Cells(r, diCol).Value
         If pyCol > 0 Then rawPY = wsRaw.Cells(r, pyCol).Value
         If pdCol > 0 Then rawPD = wsRaw.Cells(r, pdCol).Value
+        If caCol > 0 Then rawCA = wsRaw.Cells(r, caCol).Value
         
         If Trim(rawTitle) <> "" Then
             count = count + 1
             If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                 Call AddOrMergeRecord(CleanPaperTitle(rawTitle), ConvertToTitleCase(rawSO), _
                                       Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
+                                      ExtractLabCorrespondingAuthors(rawCA, "EI", dictTeachers), _
                                       Trim(rawAU), Trim(rawDOI), "EI", dictDoi, dictTitle, dictRecs)
             Else
                 outOfDateCount = outOfDateCount + 1
@@ -206,8 +208,8 @@ Public Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
     If Not fso.FileExists(cnkiFile) Then IngestCnkiData = 0: Exit Function
     
     Dim wbRaw As Workbook, wsRaw As Worksheet, lr As Long, r As Long, c As Long
-    Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long
-    Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String
+    Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long, mentorCol As Long
+    Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String, rawMentor As String
     Dim count As Long: count = 0
     
     Set wbRaw = Workbooks.Open(cnkiFile, ReadOnly:=True)
@@ -222,12 +224,13 @@ Public Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
             Case "DOI-DOI", "DOI": diCol = c
             Case "Year-年", "年": pyCol = c
             Case "PubTime-发表时间", "发表时间": pdCol = c
+            Case "Supervisor-导师", "导师", "Supervisor": mentorCol = c
         End Select
     Next c
     
     lr = wsRaw.Cells(wsRaw.Rows.Count, IIf(tiCol > 0, tiCol, 1)).End(xlUp).Row
     For r = 2 To lr
-        rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = ""
+        rawTitle = "": rawSO = "": rawVL = "": rawIS = "": rawAU = "": rawDOI = "": rawPY = "": rawPD = "": rawMentor = ""
         If tiCol > 0 Then rawTitle = wsRaw.Cells(r, tiCol).Value
         If soCol > 0 Then rawSO = wsRaw.Cells(r, soCol).Value
         If vlCol > 0 Then rawVL = wsRaw.Cells(r, vlCol).Value
@@ -236,12 +239,14 @@ Public Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
         If diCol > 0 Then rawDOI = wsRaw.Cells(r, diCol).Value
         If pyCol > 0 Then rawPY = wsRaw.Cells(r, pyCol).Value
         If pdCol > 0 Then rawPD = wsRaw.Cells(r, pdCol).Value
+        If mentorCol > 0 Then rawMentor = wsRaw.Cells(r, mentorCol).Value
         
         If Trim(rawTitle) <> "" Then
             count = count + 1
             If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                 Call AddOrMergeRecord(CleanPaperTitle(rawTitle), Trim(rawSO), _
                                       Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
+                                      ExtractLabCorrespondingAuthors(rawMentor, "中文核心", dictTeachers), _
                                       Trim(rawAU), Trim(rawDOI), "中文核心", dictDoi, dictTitle, dictRecs)
             Else
                 outOfDateCount = outOfDateCount + 1

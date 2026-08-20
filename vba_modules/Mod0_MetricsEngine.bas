@@ -146,7 +146,7 @@ Public Sub GetMergedOutputStats(filePath As String, ByRef totalRows As Long, ByR
         If lr1 >= 2 Then
             totalRows = lr1 - 1
             For r = 2 To lr1
-                sType = Trim(CStr(ws1.Cells(r, "G").Value))
+                sType = Trim(CStr(ws1.Cells(r, "H").Value))
                 If InStr(sType, "SCI") > 0 Then sciTotal = sciTotal + 1
                 If InStr(sType, "EI") > 0 Then eiTotal = eiTotal + 1
                 If InStr(sType, "中文核心") > 0 Then cnkiTotal = cnkiTotal + 1
@@ -165,7 +165,7 @@ Public Sub GetMergedOutputStats(filePath As String, ByRef totalRows As Long, ByR
         If lr2 >= 2 Then
             excTotal = lr2 - 1
             For r = 2 To lr2
-                sType = Trim(CStr(ws2.Cells(r, "G").Value))
+                sType = Trim(CStr(ws2.Cells(r, "H").Value))
                 If InStr(sType, "SCI") > 0 Then excSci = excSci + 1
                 If InStr(sType, "EI") > 0 Then excEi = excEi + 1
                 If InStr(sType, "中文核心") > 0 Then excCnki = excCnki + 1

@@ -71,7 +71,7 @@
 
 本系统支持同时接入 **Web of Science (WOS)**、**EI Compendex**、**中国知网 (CNKI)** 及 **Scopus** 等多源数据，各数据库字段映射及提取对齐标准如下：
 
-| 交付终稿字段<br>(`papers_final_merged.xlsx`) | Web of Science (WOS)<br>(`WOS.txt` / `WOS.xlsx`) | EI Compendex<br>(`EI.xlsx` / `EI.xls`) | 中国知网 (CNKI)<br>(`CNKI.xls` / `CNKI.xlsx`) | Scopus (Elsevier)<br>(`scopus.csv`) | 核心清洗与提取转换规则 |
+| 交付终稿字段<br>(`papers_final_merged.xlsx`) | Web of Science (WOS)<br>(`WOS.txt` / `WOS.xlsx`) | EI Compendex<br>(`EI.xlsx` / `EI.xls` / `EI.csv`) | 中国知网 (CNKI)<br>(`CNKI.xls` / `CNKI.xlsx`) | Scopus (Elsevier)<br>(`scopus.csv`) | 核心清洗与提取转换规则 |
 | :---: | :---: | :---: | :---: | :---: | :--- |
 | **序号** (Col A) | *(自动生成)* | *(自动生成)* | *(自动生成)* | *(自动生成)* | 区分入库与排除后，自增纯数字编号（1, 2, 3...）。 |
 | **论文题目** (Col B) | `TI`<br>`Article Title` | `Title` | `Title-题名`<br>`题名` | `Title` | • 压缩连续多余空格与换行符；<br>• 去除题目末尾多余的英文句点 `.`。 |
@@ -79,8 +79,9 @@
 | **卷** (Col D) | `VL`<br>`Volume` | `Volume` | `Volume-卷`<br>`卷` | `Volume` | 纯净卷号提取，若原库为空则保留为空。 |
 | **期** (Col E) | `IS`<br>`Issue` | `Issue` | `Period-期`<br>`期` | `Issue` | 纯净期号提取，若原库为空则保留为空。 |
 | **作者** (Col F) | `AU`<br>`Authors` | `Author` | `Author-作者`<br>`作者` | `Authors` | • **EI 机构角标剥离**：正则去除 `(1,2)` 等数字标签；<br>• **师生档案多维匹配**：根据 `teachers_profile.xlsx` 全拼音别名消歧识别；<br>• **入库表 (Sheet 1)** 仅保留本组人员姓名；<br>• **排除表 (Sheet 2)** 保留原库作者全文便于溯源。 |
-| **收录类型** (Col G) | 标记为 `SCI` | 标记为 `EI` | 标记为 `中文核心` | 标记为 `Scopus` | • 跨库合并时，自动组合为复合标签（如 **`SCI+EI`**）；<br>• 排序权重优先级：`SCI` > `EI` > `中文核心`。 |
-| **影响因子** (Col H) | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | • 依据 `config/journal_if.xlsx` 的 `Journal Impact Factor` 列；<br>• 期刊名去除符号与空格后全大写归一化匹配；<br>• 命中则填充数值，未收录则留空。 |
+| **通讯作者** (Col G) | `RP`<br>`Reprint Author` | `Corresponding author(s)` | `Supervisor-导师`<br>`导师` | `Correspondence Address` | • **仅提取本组教师**：非本组成员自动过滤不保留；<br>• **英文来源格式**：`英文名(中文名)`（如 `Tian, Yu(田煜)`）；<br>• **知网来源格式**：`中文名(导师)`（如 `邵天敏(导师)`）；<br>• **跨库去重合流**：多源合流时去重合并并优先保留全拼格式。 |
+| **收录类型** (Col H) | 标记为 `SCI` | 标记为 `EI` | 标记为 `中文核心` | 标记为 `Scopus` | • 跨库合并时，自动组合为复合标签（如 **`SCI+EI`**）；<br>• 排序权重优先级：`SCI` > `EI` > `中文核心`。 |
+| **影响因子** (Col I) | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | • 依据 `config/journal_if.xlsx` 的 `Journal Impact Factor` 列；<br>• 期刊名去除符号与空格后全大写归一化匹配；<br>• 命中则填充数值，未收录则留空。 |
 | *(去重键: DOI)* | `DI`<br>`DOI` | `DOI` | `DOI-DOI`<br>`DOI` | `DOI` | 统一转换为全小写、去空格，作为跨库合并主键。 |
 | *(去重键: 归一化题目)* | `TI` (正则纯净串) | `Title` (正则纯净串) | `Title-题名` (纯净串) | `Title` (纯净串) | 仅提取中英文字符与数字作为二级去重备用主键。 |
 | *(时间过滤基准: 年份)* | **`PY`**<br>`Publication Year` | **`Publication year`** | **`Year-年`**<br>`年` | `Year` | 严格以**正式出版年份**为核心过滤基准。 |
