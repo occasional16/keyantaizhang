@@ -1,93 +1,120 @@
 ' ==============================================================================
 ' 模块名称: Mod0_ControlPanel
-' 核心职责: 交互控制台视图渲染、预设按钮回调、全流程总调度与日志引擎
-' 设计哲学: 专注 UI 呈现与用户交互，数据逐行扫描统计下沉至 Mod0_MetricsEngine
+' 核心职责: 控制面板交互工作台 (UI, Presentation & Business Pipeline Orchestrator)
+' 设计准则:
+'   1. 顶部横幅双核设计: [ 一键热更并重置面板 ] (系统运维) + [ >>> 一键执行全流程 <<< ] (业务生产)
+'   2. 业务全流程在此调度，支持随时无损热更与极富信息量的交付汇总报告
+'   3. 680pt 几何严密对齐，纯正 GBK 中文，绝对杜绝任何 Unicode Emoji 乱码
 ' ==============================================================================
 Option Explicit
 
-' ==============================================================================
-' 1. 控制台主界面标准重构与渲染
-' ==============================================================================
 Public Sub 一键生成控制面板()
-    Dim wb As Workbook, ws As Worksheet
-    Dim oldScreenUpdating As Boolean, oldDisplayAlerts As Boolean, oldEnableEvents As Boolean
+    Dim wb As Workbook, ws As Worksheet, shp As Shape, sIdx As Long
     
-    oldScreenUpdating = Application.ScreenUpdating
-    oldDisplayAlerts = Application.DisplayAlerts
-    oldEnableEvents = Application.EnableEvents
-    
+    Set wb = ThisWorkbook
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
     Application.EnableEvents = False
     
-    Set wb = ThisWorkbook
-    On Error Resume Next
-    Set ws = wb.Sheets("控制面板")
-    If ws Is Nothing Then Set ws = wb.Sheets(1): ws.Name = "控制面板"
-    On Error GoTo 0
+    If wb.Sheets.Count > 1 Then
+        For sIdx = wb.Sheets.Count To 2 Step -1
+            wb.Sheets(sIdx).Delete
+        Next sIdx
+    End If
     
+    Set ws = wb.Sheets(1)
+    ws.Name = "Sheet1"
     ws.Cells.Clear
-    Dim shp As Shape
     For Each shp In ws.Shapes
         shp.Delete
     Next shp
-    
-    ws.Columns("A").ColumnWidth = 3.5
-    ws.Columns("B").ColumnWidth = 14
-    ws.Columns("C").ColumnWidth = 11
-    ws.Columns("D").ColumnWidth = 14
-    ws.Columns("E").ColumnWidth = 11
-    ws.Columns("F").ColumnWidth = 14
-    ws.Columns("G").ColumnWidth = 3.5
-    ws.Columns("H").ColumnWidth = 15
-    ws.Columns("I").ColumnWidth = 12
-    ws.Columns("J").ColumnWidth = 14
-    ws.Columns("K").ColumnWidth = 3.5
-    
-    Call DrawHeaderBanner(ws)
-    Call DrawSummaryCards(ws)
-    Call DrawDateBar(ws)
-    Call DrawWorkflowAndPrinciples(ws)
-    Call DrawQuickLinksAndLog(ws)
     
     ws.Activate
     ActiveWindow.DisplayGridlines = False
     ActiveWindow.DisplayHeadings = True
     
+    ' 精确对齐列宽（使得 Col B 起始于 20pt，Col J 结束于 680pt）
+    ws.Columns("A").ColumnWidth = 2.63  ' ~20pt
+    ws.Columns("B").ColumnWidth = 14    ' 88pt
+    ws.Columns("C").ColumnWidth = 11    ' 70pt
+    ws.Columns("D").ColumnWidth = 13    ' 82pt
+    ws.Columns("E").ColumnWidth = 11    ' 70pt
+    ws.Columns("F").ColumnWidth = 13    ' 82pt
+    ws.Columns("G").ColumnWidth = 3.5   ' 26pt
+    ws.Columns("H").ColumnWidth = 13    ' 82pt
+    ws.Columns("I").ColumnWidth = 13    ' 82pt
+    ws.Columns("J").ColumnWidth = 13    ' 82pt (Col J 右边缘严格等于 680pt)
+    ws.Columns("K").ColumnWidth = 3
+    
+    ws.Cells.Font.Name = "微软雅黑"
+    ws.Cells.Font.Size = 10
+    
+    Call DrawHeaderBanner(ws)           ' Top: 15 ~ 70 (Right: 680pt, 双核功能栏)
+    Call DrawSummaryCards(ws)           ' Top: 85 ~ 295 (Right: 680pt)
+    Call DrawDateBar(ws)                ' Row 20 (Right: 680pt)
+    Call DrawWorkflowAndPrinciples(ws)  ' Row 23 ~ 27 (极简流程与工作原理看板)
+    Call DrawQuickLinksAndLog(ws)       ' Row 29 ~ 33 (Right: 680pt)
+    
     Call 刷新控制面板数据
     
-    Application.ScreenUpdating = oldScreenUpdating
-    Application.DisplayAlerts = oldDisplayAlerts
-    Application.EnableEvents = oldEnableEvents
+    ws.Range("A1").Select
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    Application.EnableEvents = True
+    
+    Call AppendLog("【控制面板】工作台已成功初始化并就绪！")
 End Sub
 
 Private Sub DrawHeaderBanner(ws As Worksheet)
-    Dim banner As Shape, btnRun As Shape
-    Set banner = ws.Shapes.AddShape(msoShapeRectangle, 20, 15, 660, 54)
+    ' 1. 顶部主横幅底板 (20 ~ 680pt, 宽 660pt)
+    Dim banner As Shape
+    Set banner = ws.Shapes.AddShape(msoShapeRoundedRectangle, 20, 15, 660, 55)
     With banner
         .Line.Visible = msoFalse
+        .Fill.Solid
         .Fill.ForeColor.RGB = RGB(24, 76, 120)
         With .TextFrame2
-            .TextRange.Text = "科研台账 (keyantaizhang) 课题组学术家底一账摸清" & vbCrLf & _
-                              "全流程自动化处理 · 100% 动态逐行扫描实测 · SCI/EI/中文核心 · 双工作表 8 列直出"
-            .TextRange.Paragraphs(1).Font.Size = 15
-            .TextRange.Paragraphs(1).Font.Bold = msoTrue
-            .TextRange.Paragraphs(1).Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
-            .TextRange.Paragraphs(2).Font.Size = 9.5
-            .TextRange.Paragraphs(2).Font.Fill.ForeColor.RGB = RGB(214, 234, 248)
+            .TextRange.Text = "  科研台账 (keyantaizhang)"
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 15.5
+            .TextRange.Font.Bold = msoTrue
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
             .VerticalAnchor = msoAnchorMiddle
-            .MarginLeft = 20
+            .MarginLeft = 14
         End With
     End With
     
+    ' 2. 系统管理按钮: [ 一键热更并重置面板 ] (325 ~ 465pt, 宽 140pt, 深青灰底色)
+    Dim btnSync As Shape
+    Set btnSync = ws.Shapes.AddShape(msoShapeRoundedRectangle, 325, 25, 140, 34)
+    With btnSync
+        .Line.Visible = msoFalse
+        .Fill.Solid
+        .Fill.ForeColor.RGB = RGB(52, 73, 94)
+        .OnAction = "Mod_Sync.一键热更并重置面板"
+        With .TextFrame2
+            .TextRange.Text = "[ 一键热更并重置面板 ]"
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 9.5
+            .TextRange.Font.Bold = msoTrue
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+            .VerticalAnchor = msoAnchorMiddle
+            .TextRange.ParagraphFormat.Alignment = msoAlignCenter
+        End With
+    End With
+    
+    ' 3. 业务生产主控按钮: [ >>> 一键自动化执行全流程 <<< ] (475 ~ 670pt, 宽 195pt, 橙色高光)
+    Dim btnRun As Shape
     Set btnRun = ws.Shapes.AddShape(msoShapeRoundedRectangle, 475, 25, 195, 34)
     With btnRun
         .Line.Visible = msoFalse
+        .Fill.Solid
         .Fill.ForeColor.RGB = RGB(230, 126, 34)
-        .OnAction = "Mod0_ControlPanel.Btn_RunAll_Click"
+        .OnAction = "Mod0_ControlPanel.一键执行业务全流程"
         With .TextFrame2
             .TextRange.Text = ">>> 一键自动化执行全流程 <<<"
-            .TextRange.Font.Size = 10.5
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 9.5
             .TextRange.Font.Bold = msoTrue
             .TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
             .VerticalAnchor = msoAnchorMiddle
@@ -97,95 +124,120 @@ Private Sub DrawHeaderBanner(ws As Worksheet)
 End Sub
 
 Private Sub DrawSummaryCards(ws As Worksheet)
-    Call CreateMetricCard(ws, 20, 110, 210, 75, "师生档案 (config)", "card_Teacher", "0", RGB(238, 245, 252), RGB(31, 110, 165))
-    Call CreateMetricCard(ws, 245, 110, 210, 75, "原始导入 (raw_data)", "card_Raw", "0", RGB(238, 245, 252), RGB(39, 174, 96))
-    Call CreateMetricCard(ws, 470, 110, 210, 75, "入库成果 (papers_final)", "card_Final", "0", RGB(254, 249, 231), RGB(211, 84, 0))
+    Call CreateSectionTitle(ws, 20, 85, "【 数据概览与状态看板 】")
     
-    Call CreateSectionTitle(ws, 20, 85, "一、 数据指标概览与结构明细")
+    Call CreateMetricCard(ws, 20, 110, 210, 75, "教师名单库 (config)", "card_Teacher", "0", RGB(238, 245, 252), RGB(31, 110, 165))
+    Call CreateMetricCard(ws, 245, 110, 210, 75, "原始库数据 (raw_data)", "card_Raw", "0", RGB(238, 245, 252), RGB(39, 174, 96))
+    Call CreateMetricCard(ws, 470, 110, 210, 75, "本室入库成果 (papers_final)", "card_Final", "0", RGB(254, 249, 231), RGB(211, 84, 0))
     
-    ws.Range("B12").Value = "【 原始文献导入清单 】"
-    ws.Range("B13").Value = "WOS 原始文献 (SCI):"
-    ws.Range("B14").Value = "EI 原始文献 (Compendex):"
-    ws.Range("B15").Value = "知网原始文献 (CNKI):"
-    ws.Range("B16").Value = "Scopus 备用文献:"
+    Dim r As Long
+    For r = 12 To 18
+        ws.Rows(r).RowHeight = 18
+    Next r
     
-    ws.Range("H12").Value = "【 成果大表 papers_final_merged 】"
-    ws.Range("H13").Value = "正式入库成果总量:"
-    ws.Range("H14").Value = "- SCI 检索论文:"
-    ws.Range("H15").Value = "- EI 检索论文:"
-    ws.Range("H16").Value = "- 中文核心期刊:"
+    ws.Range("B12").Value = "[ 原始数据源 raw_data ]"
+    ws.Range("B12").Font.Bold = True
+    ws.Range("B12").Font.Color = RGB(100, 100, 100)
+    
+    ws.Range("B13").Value = "WOS (SCI) 原始:": ws.Range("D13").Value = "0 条"
+    ws.Range("B14").Value = "EI Compendex 原始:": ws.Range("D14").Value = "0 条"
+    ws.Range("B15").Value = "CNKI 知网原始:": ws.Range("D15").Value = "0 条"
+    ws.Range("B16").Value = "Scopus 原始:": ws.Range("D16").Value = "0 条"
+    
+    ws.Range("H12").Value = "[ 成果交付大表 papers_final_merged ]"
+    ws.Range("H12").Font.Bold = True
+    ws.Range("H12").Font.Color = RGB(100, 100, 100)
+    
+    ws.Range("H13").Value = "最终合并入库 (篇数):": ws.Range("J13").Value = "0 篇"
+    ws.Range("H14").Value = "其中 SCI 论文:": ws.Range("J14").Value = "0 篇"
+    ws.Range("H15").Value = "其中 EI 论文:": ws.Range("J15").Value = "0 篇"
+    ws.Range("H16").Value = "其中 中文核心:": ws.Range("J16").Value = "0 篇"
     ws.Range("H17").Value = "(SCI+EI 双收录):": ws.Range("J17").Value = "0 篇"
-    ws.Range("H18").Value = "【排除未认领明细】:"
     
-    With ws.Range("B13:D16, H13:J18")
-        .Font.Name = "微软雅黑"
+    ws.Range("H18").Value = "非本室/排除条目:": ws.Range("J18").Value = "0 篇 (SCI 0, EI 0, 中文 0, SCI+EI 0)"
+    
+    With ws.Range("B13:D16, H13:J17")
         .Font.Size = 9.5
-        .VerticalAlignment = xlCenter
+        .Font.Color = RGB(60, 60, 60)
     End With
     
-    With ws.Range("B12, H12")
-        .Font.Name = "微软雅黑"
-        .Font.Size = 10
-        .Font.Bold = True
-        .Font.Color = RGB(24, 76, 120)
+    With ws.Range("H18, J18")
+        .Font.Size = 9
+        .Font.Color = RGB(130, 130, 130)
     End With
     
-    ws.Range("D13:D16, J13:J18").HorizontalAlignment = xlRight
-    ws.Range("D13:D16, J13:J18").Font.Bold = True
+    ws.Range("D13:D16, J13:J17").HorizontalAlignment = xlRight
+    ws.Range("D13:D16, J13:J17").Font.Bold = True
+    ws.Range("J18").HorizontalAlignment = xlRight
 End Sub
 
 Private Sub DrawDateBar(ws As Worksheet)
-    Call CreateSectionTitle(ws, 20, 200, "二、 成果发表时间范围筛选 (严格以出版年份 PY 过滤)")
+    ws.Rows(19).RowHeight = 8
+    ws.Rows(20).RowHeight = 24
     
-    ws.Range("B20").Value = "起始日期 (YYYY/MM/DD):"
-    ws.Range("B20").Font.Name = "微软雅黑"
-    ws.Range("B20").Font.Size = 9.5
+    ws.Range("B20").Value = "成果发表时间:"
     ws.Range("B20").Font.Bold = True
     ws.Range("B20").Font.Color = RGB(24, 76, 120)
+    ws.Range("B20").VerticalAlignment = xlCenter
+    
+    ws.Range("C20").Value = "起始日期"
+    ws.Range("C20").Font.Color = RGB(120, 130, 140)
+    ws.Range("C20").HorizontalAlignment = xlRight
+    ws.Range("C20").VerticalAlignment = xlCenter
     
     With ws.Range("D20")
-        .Value = "2026/01/01"
-        .Font.Name = "微软雅黑": .Font.Size = 10: .Font.Bold = True
-        .HorizontalAlignment = xlCenter: .VerticalAlignment = xlCenter
-        .Interior.Color = RGB(254, 249, 231)
-        .Borders.LineStyle = xlContinuous: .Borders.Color = RGB(243, 156, 18)
+        .NumberFormat = "yyyy-mm-dd"
+        .Value = "2026-01-01"
+        .Interior.Color = RGB(255, 255, 255)
+        .Borders.LineStyle = xlContinuous
+        .Borders.Color = RGB(180, 205, 230)
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .Font.Bold = True
+        .Font.Color = RGB(31, 110, 165)
     End With
     
-    ws.Range("E20").Value = "至 截止日期:"
-    ws.Range("E20").Font.Name = "微软雅黑"
-    ws.Range("E20").Font.Size = 9.5
-    ws.Range("E20").Font.Bold = True
-    ws.Range("E20").HorizontalAlignment = xlCenter
+    ws.Range("E20").Value = "截止日期"
+    ws.Range("E20").Font.Color = RGB(120, 130, 140)
+    ws.Range("E20").HorizontalAlignment = xlRight
+    ws.Range("E20").VerticalAlignment = xlCenter
     
     With ws.Range("F20")
-        .Value = "2026/12/31"
-        .Font.Name = "微软雅黑": .Font.Size = 10: .Font.Bold = True
-        .HorizontalAlignment = xlCenter: .VerticalAlignment = xlCenter
-        .Interior.Color = RGB(254, 249, 231)
-        .Borders.LineStyle = xlContinuous: .Borders.Color = RGB(243, 156, 18)
+        .NumberFormat = "yyyy-mm-dd"
+        .Value = "2026-12-31"
+        .Interior.Color = RGB(255, 255, 255)
+        .Borders.LineStyle = xlContinuous
+        .Borders.Color = RGB(180, 205, 230)
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .Font.Bold = True
+        .Font.Color = RGB(31, 110, 165)
     End With
     
     Dim btnTop As Single, btnH As Single
-    btnTop = ws.Range("H20").Top - 2
+    btnTop = ws.Range("H20").Top + 1
     btnH = 22
-    Call CreateMiniPresetBtn(ws, 440, btnTop, 44, btnH, "全量", "Mod0_ControlPanel.SetDatePreset_All", RGB(127, 140, 141))
-    Call CreateMiniPresetBtn(ws, 489, btnTop, 44, btnH, "2026", "Mod0_ControlPanel.SetDatePreset_2026", RGB(41, 128, 185))
-    Call CreateMiniPresetBtn(ws, 538, btnTop, 44, btnH, "2025", "Mod0_ControlPanel.SetDatePreset_2025", RGB(39, 174, 96))
+    
+    Call CreateMiniPresetBtn(ws, 440, btnTop, 44, btnH, "全部", "Mod0_ControlPanel.SetDatePreset_All", RGB(127, 140, 141))
+    Call CreateMiniPresetBtn(ws, 489, btnTop, 44, btnH, "2026", "Mod0_ControlPanel.SetDatePreset_2026", RGB(52, 152, 219))
+    Call CreateMiniPresetBtn(ws, 538, btnTop, 44, btnH, "2025", "Mod0_ControlPanel.SetDatePreset_2025", RGB(46, 204, 113))
     Call CreateMiniPresetBtn(ws, 587, btnTop, 44, btnH, "2024", "Mod0_ControlPanel.SetDatePreset_2024", RGB(155, 89, 182))
     Call CreateMiniPresetBtn(ws, 636, btnTop, 44, btnH, "近3年", "Mod0_ControlPanel.SetDatePreset_3Years", RGB(230, 126, 34))
 End Sub
 
 Private Sub CreateMiniPresetBtn(ws As Worksheet, left As Single, top As Single, width As Single, height As Single, _
-                               txt As String, actionMacro As String, colorRgb As Long)
+                                btnText As String, macroName As String, btnColor As Long)
     Dim btn As Shape
     Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, left, top, width, height)
     With btn
         .Line.Visible = msoFalse
-        .Fill.ForeColor.RGB = colorRgb
-        .OnAction = actionMacro
+        .Fill.Solid
+        .Fill.ForeColor.RGB = btnColor
+        .OnAction = macroName
         With .TextFrame2
-            .TextRange.Text = txt
-            .TextRange.Font.Size = 9
+            .TextRange.Text = btnText
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 8.5
             .TextRange.Font.Bold = msoTrue
             .TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
             .VerticalAnchor = msoAnchorMiddle
@@ -195,210 +247,246 @@ Private Sub CreateMiniPresetBtn(ws As Worksheet, left As Single, top As Single, 
 End Sub
 
 Public Sub SetDatePreset_All()
-    ThisWorkbook.Sheets(1).Range("D20").Value = ""
-    ThisWorkbook.Sheets(1).Range("F20").Value = ""
-    Call 刷新控制面板数据
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1)
+    ws.Range("D20").Value = ""
+    ws.Range("F20").Value = ""
+    Call AppendLog("【时间已设为: 全量历史区间】（点击右上角大按钮即可生成成果）")
 End Sub
 
 Public Sub SetDatePreset_2026()
-    ThisWorkbook.Sheets(1).Range("D20").Value = "2026/01/01"
-    ThisWorkbook.Sheets(1).Range("F20").Value = "2026/12/31"
-    Call 刷新控制面板数据
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1)
+    ws.Range("D20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("D20").Value = "2026-01-01"
+    ws.Range("F20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("F20").Value = "2026-12-31"
+    Call AppendLog("【时间已设为: 2026 年度】（点击右上角大按钮即可生成成果）")
 End Sub
 
 Public Sub SetDatePreset_2025()
-    ThisWorkbook.Sheets(1).Range("D20").Value = "2025/01/01"
-    ThisWorkbook.Sheets(1).Range("F20").Value = "2025/12/31"
-    Call 刷新控制面板数据
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1)
+    ws.Range("D20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("D20").Value = "2025-01-01"
+    ws.Range("F20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("F20").Value = "2025-12-31"
+    Call AppendLog("【时间已设为: 2025 年度】（点击右上角大按钮即可生成成果）")
 End Sub
 
 Public Sub SetDatePreset_2024()
-    ThisWorkbook.Sheets(1).Range("D20").Value = "2024/01/01"
-    ThisWorkbook.Sheets(1).Range("F20").Value = "2024/12/31"
-    Call 刷新控制面板数据
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1)
+    ws.Range("D20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("D20").Value = "2024-01-01"
+    ws.Range("F20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("F20").Value = "2024-12-31"
+    Call AppendLog("【时间已设为: 2024 年度】（点击右上角大按钮即可生成成果）")
 End Sub
 
 Public Sub SetDatePreset_3Years()
-    ThisWorkbook.Sheets(1).Range("D20").Value = "2024/01/01"
-    ThisWorkbook.Sheets(1).Range("F20").Value = "2026/12/31"
-    Call 刷新控制面板数据
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1)
+    ws.Range("D20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("D20").Value = "2024-01-01"
+    ws.Range("F20").NumberFormat = "yyyy-mm-dd"
+    ws.Range("F20").Value = "2026-12-31"
+    Call AppendLog("【时间已设为: 近三年区间 2024~2026】（点击右上角大按钮即可生成成果）")
 End Sub
 
 Private Sub DrawWorkflowAndPrinciples(ws As Worksheet)
-    Call CreateSectionTitle(ws, 20, 230, "三、 自动化作业流水线与核心治理原则")
+    ws.Rows(21).RowHeight = 10
     
-    Dim boxW As Single, boxH As Single, gap As Single, startL As Single, topY As Single
-    boxW = 153: boxH = 50: gap = 16: startL = 20: topY = 250
+    Dim titleTop As Single, cardTop As Single
+    titleTop = ws.Range("B22").Top
+    cardTop = titleTop + 24
     
-    Dim s1 As Shape
-    Set s1 = ws.Shapes.AddShape(msoShapeRoundedRectangle, startL, topY, boxW, boxH)
-    With s1
-        .Line.ForeColor.RGB = RGB(41, 128, 185): .Line.Weight = 1.5
-        .Fill.ForeColor.RGB = RGB(238, 245, 252)
-        .OnAction = "Mod1_TeacherPinyin.生成老师拼音变体"
+    Call CreateSectionTitle(ws, 20, titleTop, "【 极简操作流程与系统工作原理 】")
+    
+    Dim guideCard As Shape
+    Set guideCard = ws.Shapes.AddShape(msoShapeRoundedRectangle, 20, cardTop, 660, 95)
+    With guideCard
+        .Line.ForeColor.RGB = RGB(200, 220, 240)
+        .Line.Weight = 1
+        .Fill.Solid
+        .Fill.ForeColor.RGB = RGB(246, 250, 254)
+    End With
+    
+    ' 左栏: 3步极简操作流程
+    Dim tbLeft As Shape
+    Set tbLeft = ws.Shapes.AddShape(msoShapeRectangle, 32, cardTop + 6, 310, 82)
+    With tbLeft
+        .Line.Visible = msoFalse
+        .Fill.Visible = msoFalse
         With .TextFrame2
-            .TextRange.Text = "步骤 1: 构建师生特征库" & vbCrLf & "生成全格式拼音与检索特征"
-            .TextRange.Paragraphs(1).Font.Size = 9.5: .TextRange.Paragraphs(1).Font.Bold = msoTrue
+            .TextRange.Text = "【 极简操作流程 (3 步搞定) 】" & vbCrLf & _
+                              "1. 准备数据: 在 raw_data 目录放入 WOS/EI/知网 原始文件；" & vbCrLf & _
+                              "2. 设定时间: 在上方面板选择或输入年份区间；" & vbCrLf & _
+                              "3. 一键执行: 点击右上角【一键自动化执行全流程】大按钮！"
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 9
+            .TextRange.Paragraphs(1).Font.Size = 9.5
+            .TextRange.Paragraphs(1).Font.Bold = msoTrue
             .TextRange.Paragraphs(1).Font.Fill.ForeColor.RGB = RGB(24, 76, 120)
-            .TextRange.Paragraphs(2).Font.Size = 8: .TextRange.Paragraphs(2).Font.Fill.ForeColor.RGB = RGB(100, 110, 120)
-            .VerticalAnchor = msoAnchorMiddle: .TextRange.ParagraphFormat.Alignment = msoAlignCenter
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(60, 80, 100)
+            .VerticalAnchor = msoAnchorTop
+            .MarginLeft = 0: .MarginTop = 0
         End With
     End With
     
-    Dim s2 As Shape
-    Set s2 = ws.Shapes.AddShape(msoShapeRoundedRectangle, startL + boxW + gap, topY, boxW, boxH)
-    With s2
-        .Line.ForeColor.RGB = RGB(39, 174, 96): .Line.Weight = 1.5
-        .Fill.ForeColor.RGB = RGB(238, 245, 252)
-        .OnAction = "Mod2_PipelineMain.清洗所有原始数据"
-        With .TextFrame2
-            .TextRange.Text = "步骤 2: 抽取清洗与去重" & vbCrLf & "多源抽取·消歧认领·双表直出"
-            .TextRange.Paragraphs(1).Font.Size = 9.5: .TextRange.Paragraphs(1).Font.Bold = msoTrue
-            .TextRange.Paragraphs(1).Font.Fill.ForeColor.RGB = RGB(39, 174, 96)
-            .TextRange.Paragraphs(2).Font.Size = 8: .TextRange.Paragraphs(2).Font.Fill.ForeColor.RGB = RGB(100, 110, 120)
-            .VerticalAnchor = msoAnchorMiddle: .TextRange.ParagraphFormat.Alignment = msoAlignCenter
-        End With
+    ' 中部分割虚线
+    Dim sepLine As Shape
+    Set sepLine = ws.Shapes.AddLine(350, cardTop + 10, 350, cardTop + 85)
+    With sepLine
+        .Line.ForeColor.RGB = RGB(210, 225, 240)
+        .Line.DashStyle = msoLineDash
     End With
     
-    Dim s3 As Shape
-    Set s3 = ws.Shapes.AddShape(msoShapeRoundedRectangle, startL + (boxW + gap) * 2, topY, boxW, boxH)
-    With s3
-        .Line.ForeColor.RGB = RGB(211, 84, 0): .Line.Weight = 1.5
-        .Fill.ForeColor.RGB = RGB(254, 249, 231)
-        .OnAction = "Mod0_ControlPanel.刷新控制面板数据"
+    ' 右栏: 系统底层三大核心工作原理
+    Dim tbRight As Shape
+    Set tbRight = ws.Shapes.AddShape(msoShapeRectangle, 360, cardTop + 6, 310, 82)
+    With tbRight
+        .Line.Visible = msoFalse
+        .Fill.Visible = msoFalse
         With .TextFrame2
-            .TextRange.Text = "步骤 3: 刷新看板数据" & vbCrLf & "100% 逐行动态扫描实测"
-            .TextRange.Paragraphs(1).Font.Size = 9.5: .TextRange.Paragraphs(1).Font.Bold = msoTrue
-            .TextRange.Paragraphs(1).Font.Fill.ForeColor.RGB = RGB(211, 84, 0)
-            .TextRange.Paragraphs(2).Font.Size = 8: .TextRange.Paragraphs(2).Font.Fill.ForeColor.RGB = RGB(100, 110, 120)
-            .VerticalAnchor = msoAnchorMiddle: .TextRange.ParagraphFormat.Alignment = msoAlignCenter
-        End With
-    End With
-    
-    Dim s4 As Shape
-    Set s4 = ws.Shapes.AddShape(msoShapeRoundedRectangle, startL + (boxW + gap) * 3, topY, boxW, boxH)
-    With s4
-        .Line.ForeColor.RGB = RGB(142, 68, 173): .Line.Weight = 1.5
-        .Fill.ForeColor.RGB = RGB(245, 238, 248)
-        .OnAction = "Mod_Sync.一键热更并重置面板"
-        With .TextFrame2
-            .TextRange.Text = "底座: 热更与重置面板" & vbCrLf & "秒级载入 vba_modules"
-            .TextRange.Paragraphs(1).Font.Size = 9.5: .TextRange.Paragraphs(1).Font.Bold = msoTrue
-            .TextRange.Paragraphs(1).Font.Fill.ForeColor.RGB = RGB(142, 68, 173)
-            .TextRange.Paragraphs(2).Font.Size = 8: .TextRange.Paragraphs(2).Font.Fill.ForeColor.RGB = RGB(100, 110, 120)
-            .VerticalAnchor = msoAnchorMiddle: .TextRange.ParagraphFormat.Alignment = msoAlignCenter
+            .TextRange.Text = "【 系统底层工作原理 (三大核心支柱) 】" & vbCrLf & _
+                              "1. 智能消歧: 依据 100 位教师拼音库自动认领，非本室条目安全排除；" & vbCrLf & _
+                              "2. 年份过滤: 严格按正式出版年份 (PY等) 筛选在期成果；" & vbCrLf & _
+                              "3. 跨库合流: 基于 DOI 与题目哈希去重，自动标识 SCI+EI 复合收录。"
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 9
+            .TextRange.Paragraphs(1).Font.Size = 9.5
+            .TextRange.Paragraphs(1).Font.Bold = msoTrue
+            .TextRange.Paragraphs(1).Font.Fill.ForeColor.RGB = RGB(24, 76, 120)
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(60, 80, 100)
+            .VerticalAnchor = msoAnchorTop
+            .MarginLeft = 0: .MarginTop = 0
         End With
     End With
 End Sub
 
 Private Sub DrawQuickLinksAndLog(ws As Worksheet)
-    Call CreateSectionTitle(ws, 20, 310, "四、 快捷文件通道与实时处理日志")
+    Dim linkTop As Single, btnLinkTop As Single, logTitleTop As Single, logBoxTop As Single
     
-    Dim btnLinkTop As Single
-    btnLinkTop = 330
-    Call CreateFileLinkButton(ws, 20, btnLinkTop, 150, 30, "教师名单 (config)", "config\teachers_profile.xlsx")
-    Call CreateFileLinkButton(ws, 190, btnLinkTop, 150, 30, "原始数据 (raw_data)", "raw_data")
-    Call CreateFileLinkButton(ws, 360, btnLinkTop, 150, 30, "交付成果大表", "papers_final_merged.xlsx")
-    Call CreateFileLinkButton(ws, 530, btnLinkTop, 150, 30, "检索实操指南", "docs\DATABASE_RETRIEVAL_GUIDE.md")
+    linkTop = ws.Range("B22").Top + 130
+    btnLinkTop = linkTop + 24
+    logTitleTop = btnLinkTop + 42
+    logBoxTop = logTitleTop + 24
     
-    With ws.Range("B23:J27")
-        .Merge
-        .Interior.Color = RGB(245, 247, 250)
-        .Borders.LineStyle = xlContinuous
-        .Borders.Color = RGB(218, 225, 231)
-        .Font.Name = "Consolas"
-        .Font.Size = 9
-        .Font.Color = RGB(52, 73, 94)
-        .HorizontalAlignment = xlLeft
-        .VerticalAlignment = xlTop
-        .WrapText = True
-        .Value = "【系统日志就绪】欢迎使用科研台账自动化整理系统！" & vbCrLf & _
-                 "点击上方 [ >>> 一键自动化执行全流程 <<< ] 开始批量处理。"
+    Call CreateSectionTitle(ws, 20, linkTop, "【 独立文件与目录快捷联动 】")
+    
+    Call CreateFileLinkButton(ws, 20, btnLinkTop, 150, 30, "打开教师档案表", "config\teachers_profile.xlsx")
+    Call CreateFileLinkButton(ws, 190, btnLinkTop, 150, 30, "打开原始数据目录", "raw_data")
+    Call CreateFileLinkButton(ws, 360, btnLinkTop, 150, 30, "打开最终成果大表", "papers_final_merged.xlsx")
+    Call CreateFileLinkButton(ws, 530, btnLinkTop, 150, 30, "打开规范说明文档", "docs\PIPELINE_SPEC.md")
+    
+    Call CreateSectionTitle(ws, 20, logTitleTop, "【 系统运行提示与日志 】")
+    
+    Dim logBox As Shape
+    Set logBox = ws.Shapes.AddShape(msoShapeRoundedRectangle, 20, logBoxTop, 660, 60)
+    With logBox
+        .Name = "shp_LogBox"
+        .Line.ForeColor.RGB = RGB(200, 214, 229)
+        .Fill.Solid
+        .Fill.ForeColor.RGB = RGB(248, 249, 250)
+        With .TextFrame2
+            .TextRange.Text = "就绪: 极简流批直达架构已就绪。所有路径基于 ThisWorkbook.Path 动态自适应。" & vbCrLf & _
+                              "提示: 若更新了本地代码可随时点击【重置与同步代码】；点击【一键执行全流程】直接产出成果大表！"
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 9
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(100, 100, 100)
+            .VerticalAnchor = msoAnchorTop
+            .MarginLeft = 12
+            .MarginTop = 8
+        End With
     End With
 End Sub
 
 Private Sub CreateSectionTitle(ws As Worksheet, left As Single, top As Single, titleText As String)
-    Dim lbl As Shape
-    Set lbl = ws.Shapes.AddShape(msoShapeRectangle, left, top, 660, 20)
-    With lbl
+    Dim tb As Shape
+    Set tb = ws.Shapes.AddShape(msoShapeRectangle, left, top, 450, 20)
+    With tb
         .Line.Visible = msoFalse
         .Fill.Visible = msoFalse
         With .TextFrame2
             .TextRange.Text = titleText
             .TextRange.Font.Name = "微软雅黑"
-            .TextRange.Font.Size = 10
+            .TextRange.Font.Size = 10.5
             .TextRange.Font.Bold = msoTrue
             .TextRange.Font.Fill.ForeColor.RGB = RGB(24, 76, 120)
             .VerticalAnchor = msoAnchorMiddle
             .MarginLeft = 0
+            .MarginTop = 0
         End With
     End With
 End Sub
 
 Private Sub CreateMetricCard(ws As Worksheet, left As Single, top As Single, width As Single, height As Single, _
-                             titleText As String, numShapeName As String, initVal As String, _
-                             bgColor As Long, borderColor As Long)
-    Dim bg As Shape, valShp As Shape
-    Set bg = ws.Shapes.AddShape(msoShapeRoundedRectangle, left, top, width, height)
-    With bg
-        .Line.ForeColor.RGB = borderColor: .Line.Weight = 1.5
+                             title As String, shapeId As String, defaultVal As String, bgColor As Long, numColor As Long)
+    Dim card As Shape
+    Set card = ws.Shapes.AddShape(msoShapeRoundedRectangle, left, top, width, height)
+    With card
+        .Line.Visible = msoFalse
+        .Fill.Solid
         .Fill.ForeColor.RGB = bgColor
-        With .TextFrame2
-            .TextRange.Text = titleText
-            .TextRange.Font.Name = "微软雅黑"
-            .TextRange.Font.Size = 9.5
-            .TextRange.Font.Bold = msoTrue
-            .TextRange.Font.Fill.ForeColor.RGB = RGB(44, 62, 80)
-            .VerticalAnchor = msoAnchorTop
-            .MarginTop = 8: .MarginLeft = 10
-        End With
     End With
     
-    Set valShp = ws.Shapes.AddShape(msoShapeRectangle, left + 10, top + 26, width - 20, height - 32)
-    With valShp
-        .Name = numShapeName
+    Dim tbTitle As Shape
+    Set tbTitle = ws.Shapes.AddShape(msoShapeRectangle, left + 8, top + 6, width - 16, 20)
+    With tbTitle
         .Line.Visible = msoFalse
         .Fill.Visible = msoFalse
         With .TextFrame2
-            .TextRange.Text = initVal
-            .TextRange.Font.Name = "Segoe UI"
+            .TextRange.Text = title
+            .TextRange.Font.Name = "微软雅黑"
+            .TextRange.Font.Size = 9.5
+            .TextRange.Font.Bold = msoTrue
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(120, 130, 140)
+            .VerticalAnchor = msoAnchorMiddle
+        End With
+    End With
+    
+    Dim tbNum As Shape
+    Set tbNum = ws.Shapes.AddShape(msoShapeRectangle, left + 8, top + 26, width - 16, 40)
+    With tbNum
+        .Name = shapeId
+        .Line.Visible = msoFalse
+        .Fill.Visible = msoFalse
+        With .TextFrame2
+            .TextRange.Text = defaultVal
+            .TextRange.Font.Name = "Arial"
             .TextRange.Font.Size = 22
             .TextRange.Font.Bold = msoTrue
-            .TextRange.Font.Fill.ForeColor.RGB = borderColor
+            .TextRange.Font.Fill.ForeColor.RGB = numColor
             .VerticalAnchor = msoAnchorMiddle
-            .TextRange.ParagraphFormat.Alignment = msoAlignLeft
-            .MarginLeft = 0
         End With
     End With
 End Sub
 
 Private Sub CreateFileLinkButton(ws As Worksheet, left As Single, top As Single, width As Single, height As Single, _
-                                 btnText As String, targetRelPath As String)
+                                 btnText As String, relPath As String)
     Dim btn As Shape
     Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, left, top, width, height)
     With btn
-        .Line.ForeColor.RGB = RGB(189, 195, 199): .Line.Weight = 1
+        .Line.ForeColor.RGB = RGB(200, 215, 230)
+        .Line.Weight = 1
+        .Fill.Solid
         .Fill.ForeColor.RGB = RGB(255, 255, 255)
-        .OnAction = "'Mod0_ControlPanel.打开相对路径 """ & targetRelPath & """'"
+        .OnAction = "'Mod0_ControlPanel.打开相对路径 """ & relPath & """'"
         With .TextFrame2
             .TextRange.Text = btnText
             .TextRange.Font.Name = "微软雅黑"
             .TextRange.Font.Size = 9
             .TextRange.Font.Bold = msoTrue
-            .TextRange.Font.Fill.ForeColor.RGB = RGB(60, 80, 100)
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(24, 76, 120)
             .VerticalAnchor = msoAnchorMiddle
             .TextRange.ParagraphFormat.Alignment = msoAlignCenter
         End With
     End With
 End Sub
 
-' ==============================================================================
-' 2. 调度总控与一键全流程执行
-' ==============================================================================
 Public Sub 刷新控制面板数据()
-    On Error Resume Next
     Call Mod0_MetricsEngine.扫描并刷新看板
-    On Error GoTo 0
 End Sub
 
 Public Sub Btn_RunAll_Click()
@@ -493,24 +581,29 @@ Public Sub 一键执行业务全流程()
 End Sub
 
 Public Sub AppendLog(msg As String)
-    Dim ws As Worksheet, oldText As String, timeStr As String
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(1)
-    If ws Is Nothing Then Exit Sub
-    
+    Dim wsPanel As Worksheet, timeStr As String
     timeStr = Format(Now, "hh:mm:ss")
-    oldText = ws.Range("B23").Value
-    ws.Range("B23").Value = "[" & timeStr & "] " & msg & vbCrLf & oldText
+    On Error Resume Next
+    Set wsPanel = ThisWorkbook.Sheets(1)
+    If Not wsPanel Is Nothing Then
+        wsPanel.Shapes("shp_LogBox").TextFrame2.TextRange.Text = "[" & timeStr & "] " & msg
+    End If
     On Error GoTo 0
 End Sub
 
 Public Sub 打开相对路径(relPath As String)
-    Dim fullPath As String
+    Dim fullPath As String, fso As Object
     fullPath = ThisWorkbook.Path & Application.PathSeparator & relPath
-    If CreateObject("Scripting.FileSystemObject").FileExists(fullPath) Or _
-       CreateObject("Scripting.FileSystemObject").FolderExists(fullPath) Then
-        CreateObject("WScript.Shell").Run """" & fullPath & """"
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If fso.FileExists(fullPath) Then
+        If LCase(fso.GetExtensionName(fullPath)) = "xlsx" Or LCase(fso.GetExtensionName(fullPath)) = "xlsm" Or LCase(fso.GetExtensionName(fullPath)) = "xls" Then
+            Workbooks.Open fullPath
+        Else
+            CreateObject("WScript.Shell").Run """" & fullPath & """"
+        End If
+    ElseIf fso.FolderExists(fullPath) Then
+        CreateObject("WScript.Shell").Run "explorer.exe """ & fullPath & """"
     Else
-        MsgBox "未找到指定的文件或目录：" & vbCrLf & fullPath, vbExclamation, "路径不存在"
+        MsgBox "未找到指定的目标文件或文件夹：" & vbCrLf & fullPath, vbExclamation + vbOKOnly, "提示"
     End If
 End Sub
