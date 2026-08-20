@@ -21,4 +21,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Sheet 2: `【未认领排除成果】`**：标准 7 列排除论文明细（包含原库作者全文），便于课题组老师溯源排查。
 - **100% 真实逐行动态扫描统计**：控制台看板数据全部基于实际生成大表动态逐行实测统计，零历史比例估算，零数量硬编码。
 - **双核解耦与热更新底座**：`Mod_Sync.bas` 支持秒级无损代码热重载，`Mod0_ControlPanel.bas` 负责交互调度。
-- **中英文双语文档与开发规范**：提供 `README.md`、`README.zh-CN.md`、`docs/PIPELINE_SPEC.md` 与开发任务文档 `docs/dev/0.1-01-architecture-and-governance.md`。
+- **中英文双语文档与开发规范**：提供 `README.md`、`README.zh-CN.md`、`docs/PIPELINE_SPEC.md`、`docs/DATABASE_RETRIEVAL_GUIDE.md` 与开发工作区规范 `docs/dev/`。

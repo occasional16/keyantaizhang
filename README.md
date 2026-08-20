@@ -41,10 +41,7 @@ Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
     ├── DATABASE_RETRIEVAL_GUIDE.md # Database search & export practical SOP
     ├── release.md                # Release gates and verification guide
     └── dev/                      # Development documents and decision records
-        ├── README.md             # Dev doc lifecycle and review rules
-        ├── 0.1-01-architecture-and-governance.md # Governance & architecture alignment
-        ├── 0.1-02-technical-audit-and-optimization.md # Core engine audit & gap-filling plan
-        └── 0.1-03-database-retrieval-spec-and-definition.md # Search spec & index definition
+        └── README.md             # Dev doc lifecycle and review rules
 ```
 
 ---
