@@ -208,8 +208,8 @@ Public Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
     If Not fso.FileExists(cnkiFile) Then IngestCnkiData = 0: Exit Function
     
     Dim wbRaw As Workbook, wsRaw As Worksheet, lr As Long, r As Long, c As Long
-    Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long, mentorCol As Long
-    Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String, rawMentor As String
+    Dim tiCol As Long, soCol As Long, vlCol As Long, isCol As Long, auCol As Long, diCol As Long, pyCol As Long, pdCol As Long, mentorCol As Long, urlCol As Long
+    Dim rawTitle As String, rawSO As String, rawVL As String, rawIS As String, rawAU As String, rawDOI As String, rawPY As String, rawPD As String, rawMentor As String, rawURL As String
     Dim count As Long: count = 0
     
     Set wbRaw = Workbooks.Open(cnkiFile, ReadOnly:=True)
@@ -225,6 +225,7 @@ Public Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
             Case "Year-年", "年": pyCol = c
             Case "PubTime-发表时间", "发表时间": pdCol = c
             Case "Supervisor-导师", "导师", "Supervisor": mentorCol = c
+            Case "URL-网址", "网址", "URL", "Url": urlCol = c
         End Select
     Next c
     
@@ -240,13 +241,15 @@ Public Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
         If pyCol > 0 Then rawPY = wsRaw.Cells(r, pyCol).Value
         If pdCol > 0 Then rawPD = wsRaw.Cells(r, pdCol).Value
         If mentorCol > 0 Then rawMentor = wsRaw.Cells(r, mentorCol).Value
+        If urlCol > 0 Then rawURL = wsRaw.Cells(r, urlCol).Value
+        If Trim(rawDOI) = "" And Trim(rawURL) <> "" Then rawDOI = rawURL
         
         If Trim(rawTitle) <> "" Then
             count = count + 1
             If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                 Call AddOrMergeRecord(CleanPaperTitle(rawTitle), Trim(rawSO), _
                                       Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
-                                      ExtractLabCorrespondingAuthors(rawMentor, "中文核心", dictTeachers), _
+                                      ExtractLabCorrespondingAuthors(IIf(Trim(rawMentor) <> "", rawMentor, rawAU), "中文核心", dictTeachers), _
                                       Trim(rawAU), Trim(rawDOI), "中文核心", dictDoi, dictTitle, dictRecs)
             Else
                 outOfDateCount = outOfDateCount + 1

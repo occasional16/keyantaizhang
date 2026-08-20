@@ -1,6 +1,6 @@
 ' ==============================================================================
 ' 模块名称: Mod2_PipelineMain
-' 核心职责: 科研台账多源清洗总控、记录聚合去重、双工作表 9 列直出与格式化引擎
+' 核心职责: 科研台账多源清洗总控、记录聚合去重、双工作表 10 列直出(含DOI超链接)与自动打开引擎
 ' ==============================================================================
 Option Explicit
 
@@ -97,13 +97,13 @@ Public Sub 清洗所有原始数据()
     Set wbOut = GetOrCreateOutputWorkbook(outPath, wsOut, wsExc)
     
     If wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row >= 2 Then
-        wsOut.Range("A2:I" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).ClearContents
+        wsOut.Range("A2:J" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).Clear
     End If
     If wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row >= 2 Then
-        wsExc.Range("A2:I" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).ClearContents
+        wsExc.Range("A2:J" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).Clear
     End If
     
-    Dim kVar As Variant, rec As Variant, rawAuthorStr As String, corrStr As String
+    Dim kVar As Variant, rec As Variant, rawAuthorStr As String, corrStr As String, doiStr As String
     acceptedCount = 0
     excludedCount = 0
     
@@ -111,9 +111,10 @@ Public Sub 清洗所有原始数据()
         rec = dictRecs(kVar)
         corrStr = ""
         If UBound(rec) >= 8 Then corrStr = CStr(rec(8))
+        doiStr = Trim(CStr(rec(5)))
         
         If Trim(CStr(rec(4))) <> "" Then
-            ' 入库成果 -> 写入 Sheet 1 (9 列)
+            ' 入库成果 -> 写入 Sheet 1 (10 列)
             acceptedCount = acceptedCount + 1
             wsOut.Cells(acceptedCount + 1, 1).Value = acceptedCount
             wsOut.Cells(acceptedCount + 1, 2).Value = rec(0)
@@ -124,8 +125,9 @@ Public Sub 清洗所有原始数据()
             wsOut.Cells(acceptedCount + 1, 7).Value = corrStr
             wsOut.Cells(acceptedCount + 1, 8).Value = rec(6)
             wsOut.Cells(acceptedCount + 1, 9).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
+            Call WriteDoiCellWithLink(wsOut, acceptedCount + 1, 10, doiStr)
         Else
-            ' 未认领/排除成果 -> 写入 Sheet 2 (9 列)
+            ' 未认领/排除成果 -> 写入 Sheet 2 (10 列)
             excludedCount = excludedCount + 1
             rawAuthorStr = ""
             If UBound(rec) >= 7 Then rawAuthorStr = CStr(rec(7))
@@ -139,20 +141,48 @@ Public Sub 清洗所有原始数据()
             wsExc.Cells(excludedCount + 1, 7).Value = corrStr
             wsExc.Cells(excludedCount + 1, 8).Value = rec(6)
             wsExc.Cells(excludedCount + 1, 9).Value = GetJournalIfValue(CStr(rec(1)), dictIF)
+            Call WriteDoiCellWithLink(wsExc, excludedCount + 1, 10, doiStr)
         End If
     Next kVar
     
     Call FormatOutputSheet(wsOut, acceptedCount + 1)
     Call FormatOutputSheet(wsExc, excludedCount + 1)
-    wbOut.Close SaveChanges:=True
+    wbOut.Save
     
-    ThisWorkbook.Activate
+    ' 自动定位并激活 Sheet 1
+    wsOut.Activate
+    
     Application.ScreenUpdating = True
     Application.DisplayAlerts = True
     
     ' 5. 刷新控制台看板与日志
     On Error Resume Next
     Application.Run "Mod0_ControlPanel.AppendLog", "【整理完成】课题组正式入库 " & acceptedCount & " 篇，未认领排除 " & excludedCount & " 篇，跨期过滤 " & outOfDateCount & " 篇。"
+    On Error GoTo 0
+End Sub
+
+Private Sub WriteDoiCellWithLink(ws As Worksheet, rowIdx As Long, colIdx As Long, doiStr As String)
+    Dim s As String, linkUrl As String
+    s = Trim(doiStr)
+    If s = "" Then
+        ws.Cells(rowIdx, colIdx).Value = ""
+        Exit Sub
+    End If
+    
+    If InStr(LCase(s), "http://") = 1 Or InStr(LCase(s), "https://") = 1 Then
+        linkUrl = s
+    Else
+        linkUrl = "https://doi.org/" & s
+    End If
+    
+    On Error Resume Next
+    ws.Hyperlinks.Add Anchor:=ws.Cells(rowIdx, colIdx), Address:=linkUrl, TextToDisplay:=s
+    With ws.Cells(rowIdx, colIdx).Font
+        .Name = "微软雅黑"
+        .Size = 9.5
+        .Underline = xlUnderlineStyleSingle
+        .Color = RGB(0, 102, 204)
+    End With
     On Error GoTo 0
 End Sub
 
@@ -180,6 +210,7 @@ Public Sub AddOrMergeRecord(ByVal title As String, ByVal journal As String, ByVa
         If Trim(CStr(oldRec(4))) = "" And Trim(matchedAuthors) <> "" Then oldRec(4) = matchedAuthors
         If Trim(CStr(oldRec(2))) = "" And Trim(vol) <> "" Then oldRec(2) = vol
         If Trim(CStr(oldRec(3))) = "" And Trim(issue) <> "" Then oldRec(3) = issue
+        If Trim(CStr(oldRec(5))) = "" And Trim(doi) <> "" Then oldRec(5) = doi
         If UBound(oldRec) >= 7 Then
             If Trim(CStr(oldRec(7))) = "" And Trim(rawAuthors) <> "" Then oldRec(7) = rawAuthors
         End If
@@ -227,7 +258,7 @@ End Function
 Public Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Worksheet, ByRef wsExc As Worksheet) As Workbook
     Dim fso As Object, wb As Workbook, headers As Variant, c As Long
     Set fso = CreateObject("Scripting.FileSystemObject")
-    headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "通讯作者", "收录类型", "影响因子")
+    headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "通讯作者", "收录类型", "影响因子", "DOI")
     
     If fso.FileExists(outPath) Then
         On Error Resume Next
@@ -261,13 +292,13 @@ Public Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Work
 End Function
 
 Public Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
-    With ws.Range("A1:I1")
+    With ws.Range("A1:J1")
         .Font.Name = "微软雅黑": .Font.Size = 11: .Font.Bold = True: .Font.Color = RGB(24, 76, 120)
         .Interior.Color = RGB(238, 245, 252): .HorizontalAlignment = xlCenter: .VerticalAlignment = xlCenter
         .RowHeight = 28
     End With
     If lastRow >= 2 Then
-        With ws.Range("A2:I" & lastRow)
+        With ws.Range("A2:J" & lastRow)
             .Font.Name = "微软雅黑": .Font.Size = 10: .VerticalAlignment = xlCenter
         End With
         ws.Range("A2:A" & lastRow).HorizontalAlignment = xlCenter
@@ -275,6 +306,7 @@ Public Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
         ws.Range("H2:I" & lastRow).HorizontalAlignment = xlCenter
         ws.Range("B2:C" & lastRow).HorizontalAlignment = xlLeft
         ws.Range("F2:G" & lastRow).HorizontalAlignment = xlLeft
+        ws.Range("J2:J" & lastRow).HorizontalAlignment = xlLeft
     End If
     ws.Columns("A").ColumnWidth = 8
     ws.Columns("B").ColumnWidth = 55
@@ -285,6 +317,7 @@ Public Sub FormatOutputSheet(ws As Worksheet, lastRow As Long)
     ws.Columns("G").ColumnWidth = 28
     ws.Columns("H").ColumnWidth = 16
     ws.Columns("I").ColumnWidth = 12
+    ws.Columns("J").ColumnWidth = 35
     ws.Activate
     ActiveWindow.DisplayGridlines = True
 End Sub

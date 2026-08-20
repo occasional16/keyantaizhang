@@ -82,6 +82,7 @@
 | **通讯作者** (Col G) | `RP`<br>`Reprint Author` | `Corresponding author(s)` | `Supervisor-导师`<br>`导师` | `Correspondence Address` | • **仅提取本组教师**：非本组成员自动过滤不保留；<br>• **英文来源格式**：`英文名(中文名)`（如 `Tian, Yu(田煜)`）；<br>• **知网来源格式**：`中文名(导师)`（如 `邵天敏(导师)`）；<br>• **跨库去重合流**：多源合流时去重合并并优先保留全拼格式。 |
 | **收录类型** (Col H) | 标记为 `SCI` | 标记为 `EI` | 标记为 `中文核心` | 标记为 `Scopus` | • 跨库合并时，自动组合为复合标签（如 **`SCI+EI`**）；<br>• 排序权重优先级：`SCI` > `EI` > `中文核心`。 |
 | **影响因子** (Col I) | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | *(匹配 JIF 字典)* | • 依据 `config/journal_if.xlsx` 的 `Journal Impact Factor` 列；<br>• 期刊名去除符号与空格后全大写归一化匹配；<br>• 命中则填充数值，未收录则留空。 |
+| **DOI** (Col J) | `DI`<br>`DOI` | `DOI` | `DOI-DOI`<br>`URL-网址` | `DOI`<br>`Link` | • 写入 Excel 原生**蓝色下划线可点击超链接**；<br>• 点击直接打开 `https://doi.org/<DOI>`；<br>• 无标准 DOI 时自动回退填充知网 `URL-网址` 确保可点击。 |
 | *(去重键: DOI)* | `DI`<br>`DOI` | `DOI` | `DOI-DOI`<br>`DOI` | `DOI` | 统一转换为全小写、去空格，作为跨库合并主键。 |
 | *(去重键: 归一化题目)* | `TI` (正则纯净串) | `Title` (正则纯净串) | `Title-题名` (纯净串) | `Title` (纯净串) | 仅提取中英文字符与数字作为二级去重备用主键。 |
 | *(时间过滤基准: 年份)* | **`PY`**<br>`Publication Year` | **`Publication year`** | **`Year-年`**<br>`年` | `Year` | 严格以**正式出版年份**为核心过滤基准。 |

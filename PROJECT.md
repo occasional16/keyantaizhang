@@ -44,8 +44,8 @@
   - **表现与控制层 (`vba_modules/Mod0_ControlPanel.bas`)**：负责交互面板渲染、按钮回调、业务全流程调度与交付报告输出；
   - **动态指标层 (`vba_modules/Mod0_MetricsEngine.bas`)**：100% 真实逐行扫描磁盘文件与交付成果表，输出精准看板数据；
   - **拼音特征层 (`vba_modules/Mod1_TeacherPinyin.bas`)**：读取 `config/teachers_profile.xlsx`，构建全格式拼音与检索特征库；
-  - **流程总控层 (`vba_modules/Mod2_PipelineMain.bas`)**：多源清洗总调度、记录聚合去重、双工作表 9 列直出与格式化；
-  - **数据采集层 (`vba_modules/Mod2_IngestSources.bas`)**：WOS、EI、CNKI 多源异构导出数据高精度解析；
+  - **流程总控层 (`vba_modules/Mod2_PipelineMain.bas`)**：多源清洗总调度、记录聚合去重、双工作表 10 列直出(含DOI超链接)与自动打开激活；
+  - **数据采集层 (`vba_modules/Mod2_IngestSources.bas`)**：WOS、EI、CNKI 多源异构导出数据高精度解析（含知网URL自动回退）；
   - **专属字段处理层 (`vba_modules/Mod3_Field_*.bas`)**：
     - `Mod3_Field_Author.bas`：作者别名库加载、机构角标剥离、消歧认领、通讯作者提取（仅限本组师生，英文附带中文名，跨库去重合并）；
     - `Mod3_Field_JournalIF.bas`：Title Case 规范化、JIF 字典高速加载与影响因子匹配；
@@ -53,8 +53,10 @@
     - `Mod3_Field_Deduplication.bas`：题目清洗、归一化字符提取与去重主键生成。
 - **关键数据约束**：
   - **双工作表交付标准 (`papers_final_merged.xlsx`)**：
-    - `Sheet 1` (`【课题组入库成果】`)：标准 9 大核心字段（序号、论文题目、期刊名称、卷、期、作者、通讯作者、收录类型、影响因子）；
-    - `Sheet 2` (`【未认领排除成果】`)：9 大核心字段（含原库原始作者全文、通讯作者及影响因子），供查漏补缺溯源核对；
+    - `Sheet 1` (`【课题组入库成果】`)：标准 10 大核心字段（序号、论文题目、期刊名称、卷、期、作者、通讯作者、收录类型、影响因子、DOI）；
+    - `Sheet 2` (`【未认领排除成果】`)：10 大核心字段（含原库原始作者全文、通讯作者、影响因子与 DOI），供查漏补缺溯源核对；
+  - **DOI 可点击超链接与知网 URL 兜底**：第 10 列写入 Excel 真实超链接（点击直达官方论文），无标准 DOI 时自动回退读取知网 `URL-网址`；
+  - **运行自动定位打开**：流水线或分步清洗完成后，自动保存并激活 `papers_final_merged.xlsx` 的 Sheet 1 供用户即刻检阅；
   - **通讯作者提取与格式化**：仅提取在 `config/teachers_profile.xlsx` 名单中的本组通讯作者，英文格式为 `英文名(中文名)`，知网格式为 `中文名(导师)`，跨库多源自动去重并保留全称；
   - **期刊影响因子智能匹配**：基于 `config/journal_if.xlsx` 的 `Journal Impact Factor` 列进行期刊名称归一化匹配，自动填充影响因子；
   - **100% 真实动态统计**：控制台看板数据全部基于真实逐行扫描计算，严禁任何历史比例推算与数量硬编码；

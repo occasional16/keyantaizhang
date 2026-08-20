@@ -36,8 +36,8 @@ English documentation: [README.md](README.md)
 │   ├── Mod0_ControlPanel.bas     # 控制台交互、按钮回调、操作指引与业务调度引擎
 │   ├── Mod0_MetricsEngine.bas    # 100% 真实动态逐行扫描、状态看板刷新引擎
 │   ├── Mod1_TeacherPinyin.bas    # 师生多格式英文拼音与别名特征构建子引擎
-│   ├── Mod2_PipelineMain.bas     # 多源清洗总调度、记录聚合去重、双工作表 9 列直出
-│   ├── Mod2_IngestSources.bas    # 多源原始文献解析器 (WOS / EI / CNKI 官方文件高精度抽取)
+│   ├── Mod2_PipelineMain.bas     # 多源清洗总调度、记录聚合去重、双工作表 10 列直出(含DOI超链接)
+│   ├── Mod2_IngestSources.bas    # 多源原始文献解析器 (WOS / EI / CNKI 官方文件高精度抽取与URL回退)
 │   ├── Mod3_Field_Author.bas     # 【字段层 - 作者】别名库加载、机构角标剥离、消歧认领、通讯作者提取
 │   ├── Mod3_Field_JournalIF.bas  # 【字段层 - 期刊/IF】Title Case 规范化与 JIF 字典高速匹配
 │   ├── Mod3_Field_Date.bas       # 【字段层 - 时间】出版年与日期跨度解析、区间有效性判定

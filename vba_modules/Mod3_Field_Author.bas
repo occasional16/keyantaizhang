@@ -213,7 +213,13 @@ Public Function MergeCorrespondingAuthors(oldCA As String, newCA As String) As S
             leftP = InStr(item, "(")
             rightP = InStr(item, ")")
             If leftP > 0 And rightP > leftP Then
-                cName = Mid(item, leftP + 1, rightP - leftP - 1)
+                Dim bracketStr As String
+                bracketStr = Mid(item, leftP + 1, rightP - leftP - 1)
+                If bracketStr = "µ¼Ê¦" Then
+                    cName = Trim(Left(item, leftP - 1))
+                Else
+                    cName = bracketStr
+                End If
                 If Not d.Exists(cName) Then
                     d(cName) = item
                 Else

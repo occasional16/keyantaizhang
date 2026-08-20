@@ -8,14 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **通讯作者 (Corresponding Author) 白名单智能提取与第 9 列交付**：
-  - 在成果交付大表 `papers_final_merged.xlsx`（Sheet 1 与 Sheet 2）中新增第 7 列 **`通讯作者`**（Col G），整体升级为 9 列标准结构；
+- **第 10 列 DOI 可点击超链接与知网 URL 自动兜底**：
+  - 在成果交付大表 `papers_final_merged.xlsx`（Sheet 1 与 Sheet 2）中新增第 10 列 **`DOI`**（Col J），整体升级为 10 列标准结构；
+  - **原生超链接写入**：单元格自动绑定 Excel 原生 Hyperlink（`https://doi.org/<DOI>`），点击即可一键跳转官方论文；
+  - **知网 URL 自动兜底**：无标准 DOI 的中文文献自动回退读取知网 `URL-网址`，确保 100% 可点击跳转；
+  - **流水线运行自动定位激活**：全流程或分步清洗完成后，自动保存大表并切换激活至 **Sheet 1 (`【课题组入库成果】`)** 供即刻审阅。
+- **通讯作者 (Corresponding Author) 白名单智能提取与第 7 列交付**：
+  - 在成果交付大表 `papers_final_merged.xlsx`（Sheet 1 与 Sheet 2）中新增第 7 列 **`通讯作者`**（Col G）；
   - **白名单准入**：严格只保留属于课题组师生档案库（`teachers_profile.xlsx`）的通讯作者，外部非本组成员自动过滤；
   - **多源格式化**：英文来源自动格式化为 `英文名(中文名)`（如 `Tian, Yu(田煜)`），知网导师格式化为 `中文名(导师)`（如 `邵天敏(导师)`）；
   - **跨库智能去重合流**：WOS 与 EI 复合收录条目自动按教师去重合并，优先保留全拼规范格式。
 - **期刊影响因子 (JIF) 自动匹配与第 9 列输出**：
   - 新增 `config/journal_if.xlsx` 高速哈希字典载入与期刊名称字母数字归一化匹配引擎；
-  - 影响因子顺延至第 9 列（Col I），双工作表直出。
+  - 影响因子填充至第 9 列（Col I），双工作表直出。
 
 ### Refactored
 - **VBA 核心引擎分层与字段解耦模块化重构**：
