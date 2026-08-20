@@ -515,35 +515,27 @@ Public Sub 刷新控制面板数据()
     On Error GoTo 0
     If wsPanel Is Nothing Then GoTo CleanExit
     
+    ' 1. 师生人员数量
     teacherCount = GetExternalWorkbookRows(rootDir & Application.PathSeparator & "config" & Application.PathSeparator & "teachers_profile.xlsx", "D")
     
+    ' 2. 原始文件数量
     wosRawCount = ScanRawDataFileCount(rawDir, Array("wos.txt", "wos.xlsx", "savedrecs.txt", "savedrecs.xlsx"))
     eiRawCount = ScanRawDataFileCount(rawDir, Array("ei.xlsx", "ei.xls", "ei.csv", "ei_raw.xlsx"))
     cnkiRawCount = ScanRawDataFileCount(rawDir, Array("cnki.xls", "cnki.xlsx", "cnki_raw.xlsx", "cnki_raw.xls"))
     scopusRawCount = ScanRawDataFileCount(rawDir, Array("scopus.csv", "scopus_raw.csv"))
     totalRaw = wosRawCount + eiRawCount + cnkiRawCount + scopusRawCount
     
+    ' 3. 100% 真实逐行统计入库成果与排除成果 (零硬编码，零比例估算)
     Call GetMergedOutputStats(rootDir & Application.PathSeparator & "papers_final_merged.xlsx", _
-                             finalMergeCount, sciCount, eiCount, cnkiCount, sciEiCount)
+                             finalMergeCount, sciCount, eiCount, cnkiCount, sciEiCount, _
+                             excTotal, excSci, excEi, excCnki, excSciEi)
     
-    If finalMergeCount = 545 Or finalMergeCount = 711 Or finalMergeCount = 0 Then
-        excTotal = 166: excSci = 162: excEi = 8: excCnki = 1: excSciEi = 5
-    ElseIf finalMergeCount = 186 Then
-        excTotal = 57: excSci = 55: excEi = 2: excCnki = 0: excSciEi = 0
-    ElseIf finalMergeCount = 359 Then
-        excTotal = 109: excSci = 107: excEi = 6: excCnki = 1: excSciEi = 5
-    Else
-        excTotal = Round(finalMergeCount * 166 / 545)
-        excSci = Round(sciCount * 162 / 532)
-        excEi = Round(eiCount * 8 / 20)
-        excCnki = IIf(cnkiCount > 0, 1, 0)
-        excSciEi = Round(sciEiCount * 5 / 19)
-    End If
-    
+    ' 4. 更新卡片
     Call UpdateCardValue(wsPanel, "card_Teacher", Format(teacherCount, "#,##0"))
     Call UpdateCardValue(wsPanel, "card_Raw", Format(totalRaw, "#,##0"))
     Call UpdateCardValue(wsPanel, "card_Final", Format(finalMergeCount, "#,##0"))
     
+    ' 5. 更新明细清单 (实测数据)
     wsPanel.Range("D13").Value = Format(wosRawCount, "#,##0") & " 条"
     wsPanel.Range("D14").Value = Format(eiRawCount, "#,##0") & " 条"
     wsPanel.Range("D15").Value = Format(cnkiRawCount, "#,##0") & " 条"
@@ -555,6 +547,7 @@ Public Sub 刷新控制面板数据()
     wsPanel.Range("J16").Value = Format(cnkiCount, "#,##0") & " 篇"
     wsPanel.Range("J17").Value = Format(sciEiCount, "#,##0") & " 篇"
     
+    ' 排除条目真实单行呈现
     wsPanel.Range("J18").Value = Format(excTotal, "#,##0") & " 篇 (SCI " & excSci & ", EI " & excEi & ", 中文 " & excCnki & ", SCI+EI " & excSciEi & ")"
 
 CleanExit:
@@ -694,8 +687,11 @@ Private Function ScanRawDataFileCount(folderPath As String, candidateNames As Va
 End Function
 
 Private Sub GetMergedOutputStats(filePath As String, ByRef totalRows As Long, ByRef sciTotal As Long, _
-                                 ByRef eiTotal As Long, ByRef cnkiTotal As Long, ByRef sciEiTotal As Long)
+                                 ByRef eiTotal As Long, ByRef cnkiTotal As Long, ByRef sciEiTotal As Long, _
+                                 ByRef excTotal As Long, ByRef excSci As Long, ByRef excEi As Long, _
+                                 ByRef excCnki As Long, ByRef excSciEi As Long)
     totalRows = 0: sciTotal = 0: eiTotal = 0: cnkiTotal = 0: sciEiTotal = 0
+    excTotal = 0: excSci = 0: excEi = 0: excCnki = 0: excSciEi = 0
     
     Dim fso As Object
     Set fso = CreateObject("Scripting.FileSystemObject")
@@ -718,19 +714,40 @@ Private Sub GetMergedOutputStats(filePath As String, ByRef totalRows As Long, By
     
     If extWb Is Nothing Then Exit Sub
     
-    Dim ws As Worksheet, lr As Long, r As Long, sType As String
-    Set ws = extWb.Sheets(1)
-    lr = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    ' 1. 真实逐行统计 Sheet 1: 入库成果
+    Dim ws1 As Worksheet, lr1 As Long, r As Long, sType As String
+    On Error Resume Next
+    Set ws1 = extWb.Sheets(1)
+    On Error GoTo 0
+    If Not ws1 Is Nothing Then
+        lr1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+        If lr1 >= 2 Then
+            totalRows = lr1 - 1
+            For r = 2 To lr1
+                sType = Trim(CStr(ws1.Cells(r, "G").Value))
+                If InStr(sType, "SCI") > 0 Then sciTotal = sciTotal + 1
+                If InStr(sType, "EI") > 0 Then eiTotal = eiTotal + 1
+                If InStr(sType, "中文核心") > 0 Then cnkiTotal = cnkiTotal + 1
+                If InStr(sType, "SCI") > 0 And InStr(sType, "EI") > 0 Then sciEiTotal = sciEiTotal + 1
+            Next r
+        End If
+    End If
     
-    If lr >= 2 Then
-        totalRows = lr - 1
-        For r = 2 To lr
-            sType = Trim(CStr(ws.Cells(r, "G").Value))
-            If InStr(sType, "SCI") > 0 Then sciTotal = sciTotal + 1
-            If InStr(sType, "EI") > 0 Then eiTotal = eiTotal + 1
-            If InStr(sType, "中文核心") > 0 Then cnkiTotal = cnkiTotal + 1
-            If InStr(sType, "SCI") > 0 And InStr(sType, "EI") > 0 Then sciEiTotal = sciEiTotal + 1
-        Next r
+    ' 2. 真实逐行统计 Sheet 2: 未认领排除成果 (100% 动态实测)
+    Dim ws2 As Worksheet, lr2 As Long
+    If extWb.Sheets.Count >= 2 Then
+        Set ws2 = extWb.Sheets(2)
+        lr2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
+        If lr2 >= 2 Then
+            excTotal = lr2 - 1
+            For r = 2 To lr2
+                sType = Trim(CStr(ws2.Cells(r, "G").Value))
+                If InStr(sType, "SCI") > 0 Then excSci = excSci + 1
+                If InStr(sType, "EI") > 0 Then excEi = excEi + 1
+                If InStr(sType, "中文核心") > 0 Then excCnki = excCnki + 1
+                If InStr(sType, "SCI") > 0 And InStr(sType, "EI") > 0 Then excSciEi = excSciEi + 1
+            Next r
+        End If
     End If
     
     If Not isAlreadyOpen Then extWb.Close SaveChanges:=False

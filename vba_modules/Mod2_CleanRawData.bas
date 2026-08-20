@@ -91,35 +91,51 @@ Public Sub 清洗所有原始数据()
     totalRaw = wosCount + eiCount + cnkiCount
     totalMerged = dictRecs.Count
     
-    ' 4. 直出写入 papers_final_merged.xlsx (严格排除无本室作者的条目)
-    Set wbOut = GetOrCreateOutputWorkbook(outPath)
-    Set wsOut = wbOut.Sheets(1)
+    ' 4. 双工作表直出 papers_final_merged.xlsx (Sheet1: 课题组入库成果, Sheet2: 未认领排除成果)
+    Dim wsExc As Worksheet
+    Set wbOut = GetOrCreateOutputWorkbook(outPath, wsOut, wsExc)
     
     If wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row >= 2 Then
         wsOut.Range("A2:G" & wsOut.Cells(wsOut.Rows.Count, "A").End(xlUp).Row).ClearContents
     End If
+    If wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row >= 2 Then
+        wsExc.Range("A2:G" & wsExc.Cells(wsExc.Rows.Count, "A").End(xlUp).Row).ClearContents
+    End If
     
-    Dim kVar As Variant, rec As Variant
+    Dim kVar As Variant, rec As Variant, rawAuthorStr As String
     acceptedCount = 0
     excludedCount = 0
     
     For Each kVar In dictRecs.Keys
         rec = dictRecs(kVar)
         If Trim(CStr(rec(4))) <> "" Then
+            ' 入库成果 -> 写入 Sheet 1
             acceptedCount = acceptedCount + 1
-            wsOut.Cells(acceptedCount + 1, 1).Value = acceptedCount ' 序号
-            wsOut.Cells(acceptedCount + 1, 2).Value = rec(0)         ' 论文题目
-            wsOut.Cells(acceptedCount + 1, 3).Value = rec(1)         ' 期刊名称
-            wsOut.Cells(acceptedCount + 1, 4).Value = rec(2)         ' 卷
-            wsOut.Cells(acceptedCount + 1, 5).Value = rec(3)         ' 期
-            wsOut.Cells(acceptedCount + 1, 6).Value = rec(4)         ' 作者
-            wsOut.Cells(acceptedCount + 1, 7).Value = rec(6)         ' 收录类型
+            wsOut.Cells(acceptedCount + 1, 1).Value = acceptedCount
+            wsOut.Cells(acceptedCount + 1, 2).Value = rec(0)
+            wsOut.Cells(acceptedCount + 1, 3).Value = rec(1)
+            wsOut.Cells(acceptedCount + 1, 4).Value = rec(2)
+            wsOut.Cells(acceptedCount + 1, 5).Value = rec(3)
+            wsOut.Cells(acceptedCount + 1, 6).Value = rec(4)
+            wsOut.Cells(acceptedCount + 1, 7).Value = rec(6)
         Else
+            ' 未认领/排除成果 -> 写入 Sheet 2
             excludedCount = excludedCount + 1
+            rawAuthorStr = ""
+            If UBound(rec) >= 7 Then rawAuthorStr = CStr(rec(7))
+            
+            wsExc.Cells(excludedCount + 1, 1).Value = excludedCount
+            wsExc.Cells(excludedCount + 1, 2).Value = rec(0)
+            wsExc.Cells(excludedCount + 1, 3).Value = rec(1)
+            wsExc.Cells(excludedCount + 1, 4).Value = rec(2)
+            wsExc.Cells(excludedCount + 1, 5).Value = rec(3)
+            wsExc.Cells(excludedCount + 1, 6).Value = rawAuthorStr
+            wsExc.Cells(excludedCount + 1, 7).Value = rec(6)
         End If
     Next kVar
     
     Call FormatOutputSheet(wsOut, acceptedCount + 1)
+    Call FormatOutputSheet(wsExc, excludedCount + 1)
     wbOut.Save
     
     ' 5. 刷新控制台看板与日志
@@ -275,8 +291,8 @@ Private Sub ParsePaperDateSpan(pubYearStr As String, pubDateStr As String, ByRef
     pEnd = DateSerial(y, 12, 31)
 End Sub
 
-Private Sub AddOrMergeRecord(title As String, journal As String, vol As String, issue As String, _
-                             authors As String, doi As String, srcType As String, _
+Private Sub AddOrMergeRecord(ByVal title As String, ByVal journal As String, ByVal vol As String, ByVal issue As String, _
+                             ByVal matchedAuthors As String, ByVal rawAuthors As String, ByVal doi As String, ByVal srcType As String, _
                              dictDoi As Object, dictTitle As Object, dictRecs As Object)
     Dim normDoi As String, normT As String
     Dim recId As Long, oldRec As Variant, mergedType As String
@@ -296,20 +312,24 @@ Private Sub AddOrMergeRecord(title As String, journal As String, vol As String, 
         oldRec = dictRecs(recId)
         mergedType = MergeSourceTypes(CStr(oldRec(6)), srcType)
         oldRec(6) = mergedType
-        If Trim(CStr(oldRec(4))) = "" And Trim(authors) <> "" Then oldRec(4) = authors
+        If Trim(CStr(oldRec(4))) = "" And Trim(matchedAuthors) <> "" Then oldRec(4) = matchedAuthors
         If Trim(CStr(oldRec(2))) = "" And Trim(vol) <> "" Then oldRec(2) = vol
         If Trim(CStr(oldRec(3))) = "" And Trim(issue) <> "" Then oldRec(3) = issue
+        If UBound(oldRec) >= 7 Then
+            If Trim(CStr(oldRec(7))) = "" And Trim(rawAuthors) <> "" Then oldRec(7) = rawAuthors
+        End If
         dictRecs(recId) = oldRec
     Else
         recId = dictRecs.Count + 1
-        Dim newRec(6) As Variant
+        Dim newRec(7) As Variant
         newRec(0) = title
         newRec(1) = journal
         newRec(2) = vol
         newRec(3) = issue
-        newRec(4) = authors
+        newRec(4) = matchedAuthors
         newRec(5) = doi
         newRec(6) = srcType
+        newRec(7) = rawAuthors
         dictRecs(recId) = newRec
         
         If normDoi <> "" Then dictDoi(normDoi) = recId
@@ -399,7 +419,7 @@ Private Function IngestWosData(rawDir As String, dictTeachers As Object, _
                     If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                         Call AddOrMergeRecord(CleanPaperTitle(rawTitle), ConvertToTitleCase(rawSO), _
                                               Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
-                                              Trim(rawDOI), "SCI", dictDoi, dictTitle, dictRecs)
+                                              Trim(rawAU), Trim(rawDOI), "SCI", dictDoi, dictTitle, dictRecs)
                     Else
                         outOfDateCount = outOfDateCount + 1
                     End If
@@ -441,7 +461,7 @@ Private Function IngestWosData(rawDir As String, dictTeachers As Object, _
                 If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                     Call AddOrMergeRecord(CleanPaperTitle(rawTitle), ConvertToTitleCase(rawSO), _
                                           Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
-                                          Trim(rawDOI), "SCI", dictDoi, dictTitle, dictRecs)
+                                          Trim(rawAU), Trim(rawDOI), "SCI", dictDoi, dictTitle, dictRecs)
                 Else
                     outOfDateCount = outOfDateCount + 1
                 End If
@@ -503,7 +523,7 @@ Private Function IngestEiData(rawDir As String, dictTeachers As Object, _
             If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                 Call AddOrMergeRecord(CleanPaperTitle(rawTitle), ConvertToTitleCase(rawSO), _
                                       Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
-                                      Trim(rawDOI), "EI", dictDoi, dictTitle, dictRecs)
+                                      Trim(rawAU), Trim(rawDOI), "EI", dictDoi, dictTitle, dictRecs)
             Else
                 outOfDateCount = outOfDateCount + 1
             End If
@@ -562,7 +582,7 @@ Private Function IngestCnkiData(rawDir As String, dictTeachers As Object, _
             If IsPaperInDateRange(rawPY, rawPD, hasStart, filterStart, hasEnd, filterEnd) Then
                 Call AddOrMergeRecord(CleanPaperTitle(rawTitle), Trim(rawSO), _
                                       Trim(rawVL), Trim(rawIS), ExtractLabAuthors(rawAU, dictTeachers), _
-                                      Trim(rawDOI), "中文核心", dictDoi, dictTitle, dictRecs)
+                                      Trim(rawAU), Trim(rawDOI), "中文核心", dictDoi, dictTitle, dictRecs)
             Else
                 outOfDateCount = outOfDateCount + 1
             End If
@@ -697,10 +717,11 @@ Private Function CleanEiAffiliationTags(ByVal s As String) As String
     CleanEiAffiliationTags = reg.Replace(s, "")
 End Function
 
-Private Function GetOrCreateOutputWorkbook(outPath As String) As Workbook
-    Dim fso As Object, wb As Workbook, ws As Worksheet, headers As Variant, c As Long
+Private Function GetOrCreateOutputWorkbook(outPath As String, ByRef wsOut As Worksheet, ByRef wsExc As Worksheet) As Workbook
+    Dim fso As Object, wb As Workbook, headers As Variant, c As Long
     Set fso = CreateObject("Scripting.FileSystemObject")
     headers = Array("序号", "论文题目", "期刊名称", "卷", "期", "作者", "收录类型")
+    
     If fso.FileExists(outPath) Then
         On Error Resume Next
         Set wb = Workbooks(fso.GetFileName(outPath))
@@ -710,11 +731,25 @@ Private Function GetOrCreateOutputWorkbook(outPath As String) As Workbook
         Set wb = Workbooks.Add
         wb.SaveAs outPath
     End If
-    Set ws = wb.Sheets(1)
-    ws.Name = "Sheet1"
+    
+    ' Sheet 1: 课题组入库成果
+    Set wsOut = wb.Sheets(1)
+    wsOut.Name = "课题组入库成果"
     For c = 0 To UBound(headers)
-        ws.Cells(1, c + 1).Value = headers(c)
+        wsOut.Cells(1, c + 1).Value = headers(c)
     Next c
+    
+    ' Sheet 2: 未认领排除成果
+    If wb.Sheets.Count < 2 Then
+        Set wsExc = wb.Sheets.Add(After:=wsOut)
+    Else
+        Set wsExc = wb.Sheets(2)
+    End If
+    wsExc.Name = "未认领排除成果"
+    For c = 0 To UBound(headers)
+        wsExc.Cells(1, c + 1).Value = headers(c)
+    Next c
+    
     Set GetOrCreateOutputWorkbook = wb
 End Function
 
